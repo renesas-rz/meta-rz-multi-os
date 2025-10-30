@@ -1,22 +1,10 @@
-From 47a881a7e2d7ca34fad905a3962245c93922b0fc Mon Sep 17 00:00:00 2001
-From: Tu Duong <tu.duong.zy@renesas.com>
-Date: Wed, 30 Mar 2022 08:05:11 +0700
-Subject: [PATCH 2/5] cmd: Add cm33 command
-
-Signed-off-by: Tu Duong <tu.duong.zy@renesas.com>
----
- cmd/Kconfig  |   8 ++++
- cmd/Makefile |   1 +
- cmd/cm33.c   | 131 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 140 insertions(+)
- create mode 100755 cmd/cm33.c
-
 diff --git a/cmd/Kconfig b/cmd/Kconfig
-index 0c984d735d..7d293f466f 100644
+index 7499ca85f5..666448ef67 100644
 --- a/cmd/Kconfig
 +++ b/cmd/Kconfig
-@@ -1,5 +1,13 @@
- menu "Command line interface"
+@@ -22,6 +22,14 @@ config HUSH_PARSER
+ 	  If disabled, you get the old, much simpler behaviour with a somewhat
+ 	  smaller memory footprint.
  
 +menu "Renesas specific commands"
 +config CMD_CM33
@@ -26,16 +14,16 @@ index 0c984d735d..7d293f466f 100644
 +
 +endmenu
 +
- config CMDLINE
- 	bool "Support U-Boot commands"
- 	default y
+ menu "Hush flavor to use"
+ depends on HUSH_PARSER
+ 
 diff --git a/cmd/Makefile b/cmd/Makefile
-index 3a9c9747c9..8b4f288187 100644
+index cf57ed73e5..f6a5b70582 100644
 --- a/cmd/Makefile
 +++ b/cmd/Makefile
-@@ -37,6 +37,7 @@ obj-$(CONFIG_CMD_BUTTON) += button.o
- obj-$(CONFIG_CMD_CACHE) += cache.o
+@@ -46,6 +46,7 @@ obj-$(CONFIG_CMD_CACHE) += cache.o
  obj-$(CONFIG_CMD_CBFS) += cbfs.o
+ obj-$(CONFIG_CMD_CEDIT) += cedit.o
  obj-$(CONFIG_CMD_CLK) += clk.o
 +obj-$(CONFIG_CMD_CM33) += cm33.o
  obj-$(CONFIG_CMD_CLS) += cls.o
@@ -178,6 +166,3 @@ index 0000000000..d7d6914b8f
 +	cm33, CONFIG_SYS_MAXARGS, 1, do_cm33,
 +	"Control CM33 CPU", cm33_help_text
 +);
--- 
-2.17.1
-
