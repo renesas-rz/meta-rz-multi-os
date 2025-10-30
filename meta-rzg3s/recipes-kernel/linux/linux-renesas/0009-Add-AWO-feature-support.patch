@@ -1,0 +1,182 @@
+From 738aaea3c3904436df2a278979e2d82cdf8492cb Mon Sep 17 00:00:00 2001
+From: OpenEmbedded <oe.patch@oe>
+Date: Thu, 9 Oct 2025 21:49:05 +0700
+Subject: [PATCH] Add AWO feature support
+
+This commit consolidates changes related to AWO:
+- 0009-available-dmac-after-resume.patch
+- disable-AWO-device-from-device-tree.patch
+- available-AWO-in-xspi-boot.patch
+- Fix-freeze-on-repeat-S2R-into-AWO.patch
+---
+ .../boot/dts/renesas/rzg3s-smarc-som.dtsi     |  4 +--
+ arch/arm64/boot/dts/renesas/rzg3s-smarc.dtsi  |  4 +--
+ drivers/clk/renesas/r9a08g045-cpg.c           | 18 ++++++++++---
+ drivers/dma/sh/rz-dmac.c                      | 25 ++++++++++++++++++-
+ 4 files changed, 42 insertions(+), 9 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/renesas/rzg3s-smarc-som.dtsi b/arch/arm64/boot/dts/renesas/rzg3s-smarc-som.dtsi
+index c9887e8ebc8c..4e750027fbcf 100644
+--- a/arch/arm64/boot/dts/renesas/rzg3s-smarc-som.dtsi
++++ b/arch/arm64/boot/dts/renesas/rzg3s-smarc-som.dtsi
+@@ -226,7 +226,7 @@ &sdhi2 {
+ #endif
+ 
+ &ostm0 {
+-	status = "okay";
++	status = "disabled";
+ };
+ 
+ &ostm1 {
+@@ -238,7 +238,7 @@ &ostm2 {
+ };
+ 
+ &ostm3 {
+-	status = "okay";
++	status = "disabled";
+ };
+ 
+ &ostm4 {
+diff --git a/arch/arm64/boot/dts/renesas/rzg3s-smarc.dtsi b/arch/arm64/boot/dts/renesas/rzg3s-smarc.dtsi
+index 0b5b67998335..89c0efd9b2b9 100644
+--- a/arch/arm64/boot/dts/renesas/rzg3s-smarc.dtsi
++++ b/arch/arm64/boot/dts/renesas/rzg3s-smarc.dtsi
+@@ -363,7 +363,7 @@ usb1_pins: usb1 {
+ &canfd {
+ 	pinctrl-0 = <&can0_pins &can1_pins>;
+ 	pinctrl-names = "default";
+-	status = "okay";
++	status = "disabled";
+ 
+ 	channel0 {
+ 		status = "okay";
+@@ -451,7 +451,7 @@ &spi0 {
+ 	dmas = <&dmac 0x2ed9>, <&dmac 0x2eda>;
+ 	dma-names = "tx", "rx";
+ 
+-	status = "okay";
++	status = "disabled";
+ #if RSPI0_LOOPBACK_SEL
+ 	spidev@0 {
+ 		compatible = "rohm,dh2228fv";
+diff --git a/drivers/clk/renesas/r9a08g045-cpg.c b/drivers/clk/renesas/r9a08g045-cpg.c
+index a5569ce4ad17..415c95d6c33d 100644
+--- a/drivers/clk/renesas/r9a08g045-cpg.c
++++ b/drivers/clk/renesas/r9a08g045-cpg.c
+@@ -405,6 +405,16 @@ static const struct rzg2l_reset r9a08g045_resets[] = {
+ };
+ 
+ static const unsigned int r9a08g045_crit_mod_clks[] __initconst = {
++	MOD_CLK_BASE + R9A08G045_DMAC_PCLK,
++	MOD_CLK_BASE + R9A08G045_CANFD_CLK_RAM,
++	MOD_CLK_BASE + R9A08G045_CANFD_PCLK,
++	MOD_CLK_BASE + R9A08G045_RSPI0_CLKB,
++	MOD_CLK_BASE + R9A08G045_OSTM0_PCLK,
++	MOD_CLK_BASE + R9A08G045_OSTM3_PCLK,
++	MOD_CLK_BASE + R9A08G045_SPI_CLK,
++	MOD_CLK_BASE + R9A08G045_SPI_HCLK,
++	MOD_CLK_BASE + R9A08G045_SPI_ACLK,
++	MOD_CLK_BASE + R9A08G045_SPI_CLKX2,
+ 	MOD_CLK_BASE + R9A08G045_GIC600_GICCLK,
+ 	MOD_CLK_BASE + R9A08G045_IA55_PCLK,
+ 	MOD_CLK_BASE + R9A08G045_IA55_CLK,
+@@ -440,7 +450,7 @@ static const struct rzg2l_cpg_pm_domain_init_data r9a08g045_pm_domains[] = {
+ 	DEF_PD("wdt0",		R9A08G045_PD_WDT0,
+ 				DEF_REG_CONF(CPG_BUS_REG0_MSTOP, BIT(0)), 0),
+ 	DEF_PD("xspi",		R9A08G045_PD_XSPI,
+-				DEF_REG_CONF(CPG_BUS_MCPU1_MSTOP, BIT(1)), 0),
++				DEF_REG_CONF(CPG_BUS_MCPU1_MSTOP, BIT(1)), GENPD_FLAG_ALWAYS_ON),
+ 	DEF_PD("mtu",		R9A08G045_PD_MTU,
+ 				DEF_REG_CONF(CPG_BUS_MCPU1_MSTOP, BIT(2)), 0),
+ 	DEF_PD("src",		R9A08G045_PD_SRC,
+@@ -458,7 +468,7 @@ static const struct rzg2l_cpg_pm_domain_init_data r9a08g045_pm_domains[] = {
+ 	DEF_PD("poe3",		R9A08G045_PD_POE3,
+ 				DEF_REG_CONF(CPG_BUS_MCPU1_MSTOP, BIT(9)), 0),
+ 	DEF_PD("rspi0",		R9A08G045_PD_RSPI0,
+-				DEF_REG_CONF(CPG_BUS_MCPU1_MSTOP, BIT(14)), 0),
++				DEF_REG_CONF(CPG_BUS_MCPU1_MSTOP, BIT(14)), GENPD_FLAG_ALWAYS_ON),
+ 	DEF_PD("rspi1",		R9A08G045_PD_RSPI1,
+ 				DEF_REG_CONF(CPG_BUS_MCPU1_MSTOP, BIT(15)), 0),
+ 	DEF_PD("sdhi0",		R9A08G045_PD_SDHI0,
+@@ -496,7 +506,7 @@ static const struct rzg2l_cpg_pm_domain_init_data r9a08g045_pm_domains[] = {
+ 	DEF_PD("scif0",		R9A08G045_PD_SCIF0,
+ 				DEF_REG_CONF(CPG_BUS_MCPU2_MSTOP, BIT(1)), 0),
+ 	DEF_PD("scif1",		R9A08G045_PD_SCIF1,
+-				DEF_REG_CONF(CPG_BUS_MCPU2_MSTOP, BIT(2)), 0),
++				DEF_REG_CONF(CPG_BUS_MCPU2_MSTOP, BIT(2)), GENPD_FLAG_ALWAYS_ON),
+ 	DEF_PD("scif2",		R9A08G045_PD_SCIF2,
+ 				DEF_REG_CONF(CPG_BUS_MCPU2_MSTOP, BIT(3)), 0),
+ 	DEF_PD("scif3",		R9A08G045_PD_SCIF3,
+@@ -510,7 +520,7 @@ static const struct rzg2l_cpg_pm_domain_init_data r9a08g045_pm_domains[] = {
+ 	DEF_PD("sci1",		R9A08G045_PD_SCI1,
+ 				DEF_REG_CONF(CPG_BUS_MCPU2_MSTOP, BIT(8)), 0),
+ 	DEF_PD("canfd",		R9A08G045_PD_CANFD,
+-				DEF_REG_CONF(CPG_BUS_MCPU2_MSTOP, BIT(9)), 0),
++				DEF_REG_CONF(CPG_BUS_MCPU2_MSTOP, BIT(9)), GENPD_FLAG_ALWAYS_ON),
+ 	DEF_PD("adc",		R9A08G045_PD_ADC,
+ 				DEF_REG_CONF(CPG_BUS_MCPU2_MSTOP, BIT(14)), 0),
+ 	DEF_PD("tsu",		R9A08G045_PD_TSU,
+
+diff --git a/drivers/dma/sh/rz-dmac.c b/drivers/dma/sh/rz-dmac.c
+index 09915def8fa6..6f742c2a318c 100644
+--- a/drivers/dma/sh/rz-dmac.c
++++ b/drivers/dma/sh/rz-dmac.c
+@@ -127,6 +127,7 @@ struct rz_dmac {
+ 
+ #define CHSTAT_ER			BIT(4)
+ #define CHSTAT_EN			BIT(0)
++#define CHSTAT_TACT                     BIT(2)          // for AWO
+ 
+ #define CHCTRL_CLRINTMSK		BIT(17)
+ #define CHCTRL_CLRSUS			BIT(9)
+@@ -660,6 +661,23 @@ static void rz_dmac_device_synchronize(struct dma_chan *chan)
+ 	rz_dmac_set_dmars_register(dmac, channel->index, 0);
+ }
+ 
++// for AWO
++static void rz_dmac_wait_terminate(struct dma_chan *chan)
++{
++       struct rz_dmac_chan *channel = to_rz_dmac_chan(chan);
++       struct rz_dmac *dmac = to_rz_dmac(chan->device);
++       u32 chstat;
++       int ret;
++
++       ret = read_poll_timeout(rz_dmac_ch_readl, chstat, !(chstat & (CHSTAT_EN | CHSTAT_TACT)),
++                               100, 100000, false, channel, CHSTAT, 1);
++       if (ret < 0)
++               dev_warn(dmac->dev, "DMA Timeout");
++
++       rz_dmac_set_dmars_register(dmac, channel->index, 0);
++}
++
++
+ static unsigned int calculate_total_byte_number_in_virtual_desc(struct rz_dmac_desc *desc)
+ {
+ 	struct scatterlist *sg, *sgl = desc->sg;
+@@ -952,9 +952,13 @@ static int rz_dmac_init(struct rz_dmac *dmac)
+ static int __maybe_unused rz_dmac_suspend(struct device *dev)
+ {
+ 	struct rz_dmac *dmac = dev_get_drvdata(dev);
+-
++	int i;
+ 	if (console_suspend_enabled) {
+-		reset_control_assert(dmac->rstc);
++	for (i = 0; i < dmac->n_channels; i++)
++		{
++			rz_dmac_terminate_all(&dmac->channels[i].vc.chan);
++			rz_dmac_wait_terminate(&dmac->channels[i].vc.chan);
++		}
+ 		pm_runtime_put(dev);
+ 	}
+ 
+@@ -967,7 +991,6 @@ static int __maybe_unused rz_dmac_resume(struct device *dev)
+ 
+ 	if (console_suspend_enabled) {
+ 		pm_runtime_get_sync(dev);
+-		reset_control_deassert(dmac->rstc);
+ 	}
+ 	return rz_dmac_init(dmac);
+ }
+-- 
+2.34.1
+

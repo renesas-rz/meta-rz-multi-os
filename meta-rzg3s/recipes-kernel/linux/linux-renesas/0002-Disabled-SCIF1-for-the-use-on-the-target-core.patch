@@ -1,0 +1,13 @@
+diff --git a/arch/arm64/boot/dts/renesas/rzg3s-smarc.dtsi b/arch/arm64/boot/dts/renesas/rzg3s-smarc.dtsi
+index dbeb485..48be5f6 100644
+--- a/arch/arm64/boot/dts/renesas/rzg3s-smarc.dtsi
++++ b/arch/arm64/boot/dts/renesas/rzg3s-smarc.dtsi
+@@ -401,7 +401,7 @@
+ 	pinctrl-0 = <&scif1_pins>;
+ 	pinctrl-names = "default";
+ 	uart-has-rtscts;
+-	status = "okay";
++	status = "disabled";
+ };
+ #elif SPDIF_SEL == SW_ON
+ &spdif {
