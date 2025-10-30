@@ -3,9 +3,9 @@
 This Multi-OS feature package provides Linux BSP Plus support for Renesas 64-bit Arm-based RZ/G series MPUs. The following boards and MPUs are currently supported:
 
 - Board: RZ/G2L SMARC Evaluation Kit / MPU: R9A07G044L (RZ/G2L)
-- Board: RZG2LC SMARC Evaluation Kit / MPU: R9A07G044C (RZ/G2LC)
-- Board: RZG2UL SMARC Evaluation Kit / MPU: R9A07G043U (RZ/G2UL)
-- Board: RZG3S SMARC Evaluation Kit / MPU: R9A08G045 (RZ/G3S)
+- Board: RZ/G2LC SMARC Evaluation Kit / MPU: R9A07G044C (RZ/G2LC)
+- Board: RZ/G2UL SMARC Evaluation Kit / MPU: R9A07G043U (RZ/G2UL)
+- Board: RZ/G3S SMARC Evaluation Kit / MPU: R9A08G045 (RZ/G3S)
 
 More details about Linux BSP Plus at: [Renesas RZ Linux BSP Plus](https://renesas-rz.github.io/rz_linux_bsp_plus/)
 
