@@ -13,7 +13,7 @@ More details about Linux BSP Plus at: [Renesas RZ Linux BSP Plus](https://renesa
 
 Assume that `$WORK` is the current working directory.
 
-Please refer to [How To Build Linux BSP Plus](https://renesas-rz.github.io/rz_linux_bsp_plus/how_to_build_linux_bsp_plus/) for the details of building Linux BSP Plus source code.
+Please refer to [How To Build Linux BSP Plus for RZ/G](https://renesas-rz.github.io/rz_linux_bsp_plus/RZG/how_to_build_linux_bsp_plus/) for the details of building Linux BSP Plus source code.
 
 To apply Multi-OS feature package, follow the steps below.
    1. Copy the contents of this repository to `$WORK/meta-rz-features`
@@ -41,11 +41,11 @@ To apply Multi-OS feature package, follow the steps below.
       ```
    5. (Optional) Uncomment the following line in `meta-rz-features/meta-rz-multi-os/meta-<platform>/conf/layer.conf` to enable RemoteProc support for the CM33 core.
       ```
-      #MACHINE_FEATURES:append = " CM33_REMOTEPROC"
+      #MACHINE_FEATURES:append = " RZG3S_CM33_REMOTEPROC"
       ```
-   6. (Optional) Update `TFA_BOARD` definition to include the variable `PLAT_M33_BOOT_SUPPORT=1` in `meta-rz-features/meta-rz-multi-os/meta-rzg3s/recipes-bsp/trusted-firmware-a/trusted-firmware-a_2.10.bbappend`to enable CM33 boot support in BL2 of Trusted Firmware-A as shown below. This will allow BL2 to start the CM33 core during startup.
+   6. (Optional) Uncomment the following line in `meta-rz-features/meta-rz-multi-os/meta-<platform>/conf/layer.conf`to enable CM33 firmware loading support in BL2 of Trusted Firmware-A.
       ```
-      TFA_BOARD = "${@'smarc PLAT_SYSTEM_SUSPEND=awo PLAT_M33_BOOT_SUPPORT=1' if d.getVar('ENABLE_RZG3S_AWO_SUPPORT') == '1' else 'smarc PLAT_SYSTEM_SUSPEND=vbat PLAT_M33_BOOT_SUPPORT=1'}"
+      #MACHINE_FEATURES:append = " RZG3S_CM33_FIRMWARE_LOAD"
       ```
 ## Cortex-M33 applications
 
