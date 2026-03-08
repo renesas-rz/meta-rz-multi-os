@@ -1,6 +1,6 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
 
-ENABLE_REMOTEPROC = "${@'1' if 'CM33_REMOTEPROC' in d.getVar('MACHINE_FEATURES').split() else '0'}"
+ENABLE_REMOTEPROC = "${@'1' if 'RZG3S_CM33_REMOTEPROC' in d.getVar('MACHINE_FEATURES').split() else '0'}"
 ENABLE_RZG3S_AWO_SUPPORT = "${@'1' if 'RZG3S_AWO_SUPPORT' in d.getVar('MACHINE_FEATURES').split() else '0'}"
 
 # List of kernel patches
