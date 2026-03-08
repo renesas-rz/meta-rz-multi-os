@@ -6,8 +6,7 @@ ENABLE_RZG3S_AWO_SUPPORT = "${@'1' if 'RZG3S_AWO_SUPPORT' in d.getVar('MACHINE_F
 # List of kernel patches
 SRC_URI += " \
 	file://0001-Set-SCIF1-and-OSTM1-OSTM2-as-critical-clock.patch \
-	file://0002-Disabled-OSTM1-OSTM2-for-the-use-on-the-target-core.patch \
-	file://0002-Disabled-SCIF1-for-the-use-on-the-target-core.patch \
+	file://0002-Disabled-OSTM1-OSTM2-SCIF1-for-the-use-on-the-target.patch \
 	file://0003-Add-rzg3s-smarc-multi-os-dtsi-for-supporting-OpenAMP.patch \
 "
 
