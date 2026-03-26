@@ -14,7 +14,15 @@ More details about Linux BSP Plus at: [Renesas RZ Linux BSP Plus](https://renesa
 Assume that `$WORK` is the current working directory.
 
 Please refer to [How To Build Linux BSP Plus for RZ/G](https://renesas-rz.github.io/rz_linux_bsp_plus/RZG/how_to_build_linux_bsp_plus/) for the details of building Linux BSP Plus source code.
-
+To support RZ Linux BSP Plus for Kernel 6.12 v3.0, please check out BSP-PLUS-K6.12-V3.0 as following:
+```bash
+    $ cd $WORK # Ensure you are in your working directory
+    $ git clone  https://github.com/renesas-rz/meta-renesas.git
+    $ cd meta-renesas
+    $ git checkout BSP-PLUS-K6.12-V3.0
+    $ cd ..
+```
+(Optional) Regarding Graphics and Video Codecs packages, please download from [Renesas.com](https://www.renesas.com/) website.
 To apply Multi-OS feature package, follow the steps below.
    1. Copy the contents of this repository to `$WORK/meta-rz-features`
    2. Run the following commands to add the Multi-OS layer
