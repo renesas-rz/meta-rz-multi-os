@@ -1,0 +1,16 @@
+diff --git a/arch/arm64/boot/dts/renesas/r9a09g087m44-dev.dts b/arch/arm64/boot/dts/renesas/r9a09g087m44-dev.dts
+index 2eb253791612..a6b04c6dd413 100644
+--- a/arch/arm64/boot/dts/renesas/r9a09g087m44-dev.dts
++++ b/arch/arm64/boot/dts/renesas/r9a09g087m44-dev.dts
+@@ -906,7 +906,7 @@ &ethss {
+ #if (SEL_PCIE || SEL_ADC || SEL_SPI2)
+ 	pinctrl-0 = <&pins_refclk>, <&eth0_pins>, <&eth1_pins>, <&eth2_pins>;
+ #else
+-	pinctrl-0 = <&pins_refclk>, <&eth0_pins>, <&eth1_pins>, <&eth2_pins>, <&eth3_pins>;
++	pinctrl-0 = <&pins_refclk>, <&eth0_pins>, <&eth1_pins>, <&eth2_pins>;
+ #endif
+ 	renesas,ethss-switch-portmanagement = <ETHSS_GMAC0_PORT>;
+ 	ethsw_pulse_gen_timer = <0>; /* Pulse generator use ETHSW timer 0 */
+-- 
+2.34.1
+

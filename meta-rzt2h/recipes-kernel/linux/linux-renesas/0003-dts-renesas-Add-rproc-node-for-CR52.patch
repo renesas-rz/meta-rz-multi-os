@@ -1,0 +1,77 @@
+diff --git a/arch/arm64/boot/dts/renesas/r9a09g077.dtsi b/arch/arm64/boot/dts/renesas/r9a09g077.dtsi
+index 6ff1197342a4..7f991e52d200 100644
+--- a/arch/arm64/boot/dts/renesas/r9a09g077.dtsi
++++ b/arch/arm64/boot/dts/renesas/r9a09g077.dtsi
+@@ -1425,6 +1425,33 @@ poeg2_d: poegd@08100ac00 {
+ 			power-domains = <&cpg>;
+ 			status = "disabled";
+ 		};
++
++		cr52_0_rproc: cr52_0 {
++			compatible = "renesas,rz-cr52";
++			reg = <0x0 0x10000000 0x0 0x001FFFFF>,
++			      <0x3 0xE0000000 0x0 0x09000000>;
++			reg-names = "cr52_sram", "cr52_ddr";
++			memory-region = <&vdev0vring0>, <&vdev0vring1>, <&vdev0buffer>;
++			renesas,rz-core = <0x0>;
++			renesas,rz-swint = <10>;
++			renesas,rz-rsctbl = <0x3 0xE0000000>;
++			renesas,rz-start_address = <0x10060000>; 
++			status = "okay";
++		};
++
++		cr52_1_rproc: cr52_1 {
++			compatible = "renesas,rz-cr52";
++			reg = <0x0 0x10000000 0x0 0x001FFFFF>,
++			      <0x3 0xE0000000 0x0 0x09000000>;
++			reg-names = "cr52_sram", "cr52_ddr";
++			memory-region = <&vdev0vring0>, <&vdev0vring1>, <&vdev0buffer>;
++			renesas,rz-core = <0x1>;
++			renesas,rz-swint = <11>;
++			renesas,rz-rsctbl = <0x3 0xE0000000>;
++			renesas,rz-start_address = <0x10060000>;
++			status = "okay";
++		};
++
+ 	};
+ 
+ 	thermal-zones {
+diff --git a/arch/arm64/boot/dts/renesas/r9a09g077m44-dev.dts b/arch/arm64/boot/dts/renesas/r9a09g077m44-dev.dts
+index bcfa7a7dd4b2..d8228f095ab8 100644
+--- a/arch/arm64/boot/dts/renesas/r9a09g077m44-dev.dts
++++ b/arch/arm64/boot/dts/renesas/r9a09g077m44-dev.dts
+@@ -128,6 +128,31 @@ global_cma: linux,cma@D0000000 {
+ 			reusable;
+ 			reg = <0x0 0xD0000000 0x0 0x10000000>;
+ 		};
++
++		cr52ddr: cr52ddr@3e0000000 {
++			compatible = "shared-dma-pool";
++			reg = <0x03 0xE0000000 0x0 0x9000000>;
++			no-map;
++		};
++
++		vdev0vring0: vdev0vring0@0x3E1000000 {
++			compatible = "shared-dma-pool";
++			reg = <0x3 0xE1000000 0x0 0x50000>;
++			no-map;
++		};
++
++		vdev0vring1: vdev0vring1@0x3E1050000 {
++			compatible = "shared-dma-pool";
++			reg = <0x3 0xE1050000 0x0 0x50000>;
++			no-map;
++		};
++
++		vdev0buffer: vdev0buffer@0x3E1200000 {
++			compatible = "shared-dma-pool";
++			reg = <0x3 0xE1200000 0x0 0x300000>;
++			no-map;
++		};
++
+ 	};
+ 
+ 	reg_1p8v: regulator0 {
+-- 
+2.34.1
+

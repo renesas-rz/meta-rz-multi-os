@@ -1,0 +1,20 @@
+diff --git a/arch/arm64/boot/dts/renesas/Makefile b/arch/arm64/boot/dts/renesas/Makefile
+index 767b13b85e3d..e38fe7ad0af8 100644
+--- a/arch/arm64/boot/dts/renesas/Makefile
++++ b/arch/arm64/boot/dts/renesas/Makefile
+@@ -135,6 +135,12 @@ dtb-$(CONFIG_ARCH_R9A07G054) += r9a07g054l2-smarc.dtb
+ 
+ dtb-$(CONFIG_ARCH_R9A09G077) += r9a09g077m44-dev.dtb
+ dtb-$(CONFIG_ARCH_R9A09G087) += r9a09g087m44-dev.dtb
++
++# Extra DTBs for A55 support
++dtb-$(CONFIG_ARCH_R9A09G087) += r9a09g087m44-dev-fsp-a551-support.dtb
++dtb-$(CONFIG_ARCH_R9A09G087) += r9a09g087m44-dev-fsp-a552-support.dtb
++dtb-$(CONFIG_ARCH_R9A09G087) += r9a09g087m44-dev-fsp-a553-support.dtb
++
+ dtb-$(CONFIG_ARCH_R9A07G054) += r9a07g054l2-smarc-cru-csi-ov5645.dtbo
+ r9a07g054l2-smarc-cru-csi-ov5645-dtbs := r9a07g054l2-smarc.dtb r9a07g054l2-smarc-cru-csi-ov5645.dtbo
+ dtb-$(CONFIG_ARCH_R9A07G054) += r9a07g054l2-smarc-cru-csi-ov5645.dtb
+-- 
+2.34.1
+

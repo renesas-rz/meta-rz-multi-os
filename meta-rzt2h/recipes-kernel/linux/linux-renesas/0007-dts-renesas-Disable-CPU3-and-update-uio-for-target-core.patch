@@ -1,0 +1,67 @@
+diff --git a/arch/arm64/boot/dts/renesas/r9a09g077m44-dev-fsp-a553-support.dts b/arch/arm64/boot/dts/renesas/r9a09g077m44-dev-fsp-a553-support.dts
+new file mode 100644
+index 000000000000..68ed7520ff08
+--- /dev/null
++++ b/arch/arm64/boot/dts/renesas/r9a09g077m44-dev-fsp-a553-support.dts
+@@ -0,0 +1,58 @@
++// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++/*
++ * Device Tree Source for the RZ/T2H Development EVK board
++ *
++ * Copyright (C) 2023 Renesas Electronics Corp.
++ */
++
++#include "r9a09g077m44-dev.dts"
++
++&cpu3 {
++	status = "disabled";
++	/delete-property/ enable-method;
++};
++
++/delete-node/ &{/vring-ctl0@3e1000000};
++/delete-node/ &{/vring-ctl1@3e1100000};
++/delete-node/ &{/vring-shm0@3e1200000};
++/delete-node/ &{/vring-shm1@3e1500000};
++/delete-node/ &{/rsctbl@3e0000000};
++/delete-node/ &{/intercpu-shm@3e0001000};
++
++/ {
++	vring-ctl0@207000000 {
++		compatible = "vring_uio";
++		reg = <0x02 0x07000000 0x0 0x100000>;
++		no-map;
++	};
++
++	vring-ctl1@207100000 {
++		compatible = "vring_uio";
++		reg = <0x02 0x07100000 0x0 0x100000>;
++		no-map;
++	};
++
++	vring-shm0@207200000 {
++		compatible = "shm_uio";
++		reg = <0x02 0x07200000 0x0 0x300000>;
++		no-map;
++	};
++
++	vring-shm1@207500000 {
++		compatible = "shm_uio";
++		reg = <0x02 0x07500000 0x0 0x300000>;
++		no-map;
++	};
++
++	rsctbl@206000000 {
++		compatible = "shm_uio";
++		reg = <0x02 0x06000000 0x0 0x1000>;
++		no-map;
++	};
++
++	intercpu-shm@206001000 {
++		compatible = "shm_uio";
++		reg = <0x02 0x06001000 0x0 0x1000>;
++		no-map;
++	};
++};
+-- 
+2.25.1
+

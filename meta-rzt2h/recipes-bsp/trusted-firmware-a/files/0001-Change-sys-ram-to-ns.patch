@@ -1,0 +1,16 @@
+diff --git a/plat/renesas/rz/soc/t2h/plat_security.c b/plat/renesas/rz/soc/t2h/plat_security.c
+index c5e7a0a66..646f2380d 100644
+--- a/plat/renesas/rz/soc/t2h/plat_security.c
++++ b/plat/renesas/rz/soc/t2h/plat_security.c
+@@ -273,7 +273,7 @@ static void bl31_security_setup(void)
+ 			.base = 0,	/* Not Used by Region 0 */
+ 			.end  = 0,	/* Not Used by Region 0 */
+ 			.sec_attr = PLAT_TZC_SEC_ATTR_REG_UNUSED_VAL,
+-			.nsaid_permissions = PLAT_TZC_REGION_ACCESS_S_UNPRIV
++			.nsaid_permissions = PLAT_TZC_REGION_ACCESS_NS_UNPRIV
+ 		},
+ 		{}
+ 	};
+-- 
+2.34.1
+

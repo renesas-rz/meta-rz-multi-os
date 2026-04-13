@@ -1,0 +1,20 @@
+diff --git a/board/renesas/rzn2h-dev/rzn2h-dev.c b/board/renesas/rzn2h-dev/rzn2h-dev.c
+index 8f6d91ccb4..a56a1ac277 100755
+--- a/board/renesas/rzn2h-dev/rzn2h-dev.c
++++ b/board/renesas/rzn2h-dev/rzn2h-dev.c
+@@ -209,9 +209,9 @@ void s_init(void)
+ 	/* ETH3 PIN */
+ 	/* ETH3_TXCLK, ETH3_TXD[0], ETH3_TXD[1], ETH3_TXD[2], ETH3_TXD[3], ETH3_TXEN, ETH3_RXCLK, ETH3_RXD[0],
+ 	ETH3_RXD[1], ETH3_RXD[2], ETH3_RXD[3], ETH3_RXDV, ETH3_TXER, ETH3_RXER, ETH3_CRS, ETH3_COL */
+-	*(volatile u8 *)PMC(33)		|= BIT(7)|BIT(6)|BIT(5)|BIT(4)|BIT(3)|BIT(2);
+-	*(volatile u64 *)PFC(33)	= (*(volatile u64 *)PFC(33) & 0x000000000000FFFF)
+-					| ((u64)0xf << 56) | ((u64)0xf << 48) | ((u64)0xf << 40) | ((u64)0xf << 32) | (0xf << 24) | (0xf << 16);
++	*(volatile u64 *)PFC(33)    = (*(volatile u64 *)PFC(33) & 0x000000000000FFFF)
++                    | ((u64)0x14 << 56) | ((u64)0x14 << 48) | ((u64)0x14 << 40) | ((u64)0x14 << 32) | ((u64)0x14 << 24) | ((u64)0x14 << 16);
++	*(volatile u8 *)PMC(33)     |= BIT(7)|BIT(6)|BIT(5)|BIT(4)|BIT(3)|BIT(2);
+ 
+ 	*(volatile u8 *)PMC(34)		|= BIT(5)|BIT(4)|BIT(3)|BIT(2)|BIT(1)|BIT(0);
+ 	*(volatile u64 *)PFC(34)	= (*(volatile u64 *)PFC(34) & 0xffff000000000000)
+-- 
+2.34.1
+

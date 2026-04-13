@@ -1,0 +1,326 @@
+diff --git a/plat/renesas/rz/common/n2h_common.mk b/plat/renesas/rz/common/n2h_common.mk
+index 4d55a6262..2ffc58e92 100644
+--- a/plat/renesas/rz/common/n2h_common.mk
++++ b/plat/renesas/rz/common/n2h_common.mk
+@@ -21,6 +21,17 @@ PLATFORM_CORE_COUNT				:= 4
+ USE_BOOTROM_XSPI_PARAMS			:= 0
+ INIT_UNUSED_NS_EL2				:= 1
+ SECURE_RTC						:= 0
++RZN2H_CA55_CR52_BL2_BOOT		?= 0
++PLAT_A551_BL2_BOOT				?= 0
++PLAT_A552_BL2_BOOT				?= 0
++PLAT_A553_BL2_BOOT				?= 0
++PLAT_R520_BL2_BOOT				?= 0
++PLAT_R521_BL2_BOOT				?= 0
++
++ifeq (${RZN2H_CA55_CR52_BL2_BOOT},1)
++PLAT_TBBR_IMG_DEF	:= 1
++$(eval $(call add_define,PLAT_TBBR_IMG_DEF))
++endif
+ 
+ $(eval $(call add_define,SECURE_RTC))
+ $(eval $(call add_define,PLAT_SOC_RZN2H))
+@@ -30,6 +41,12 @@ $(eval $(call add_define,PLAT_EMMC_WRITE_ENABLE))
+ $(eval $(call add_define,PLAT_DDR_ECC))
+ $(eval $(call add_define,PLATFORM_CORE_COUNT))
+ $(eval $(call add_define,USE_BOOTROM_XSPI_PARAMS))
++$(eval $(call add_define,RZN2H_CA55_CR52_BL2_BOOT))
++$(eval $(call add_define,PLAT_A551_BL2_BOOT))
++$(eval $(call add_define,PLAT_A552_BL2_BOOT))
++$(eval $(call add_define,PLAT_A553_BL2_BOOT))
++$(eval $(call add_define,PLAT_R520_BL2_BOOT))
++$(eval $(call add_define,PLAT_R521_BL2_BOOT))
+ 
+ # This option gets enabled automatically if the TRUSTED_BOARD_BOOT
+ # is set via root Makefile, but Renesas support Trusted-Boot without
+diff --git a/plat/renesas/rz/soc/t2h/bl2_plat_setup.c b/plat/renesas/rz/soc/t2h/bl2_plat_setup.c
+index 852cb3027..9b80053a3 100644
+--- a/plat/renesas/rz/soc/t2h/bl2_plat_setup.c
++++ b/plat/renesas/rz/soc/t2h/bl2_plat_setup.c
+@@ -25,6 +25,20 @@
+ #include <rz_soc_def.h>
+ #include <rz_private.h>
+ 
++#include <common/tbbr/tbbr_img_def.h>
++#include <plat_tbbr_img_def.h>
++#include <common/debug.h>
++
++#if RZN2H_CA55_CR52_BL2_BOOT
++/* Key code for writing PRCR register */
++#define BSP_PRV_PRCR_KEY		(0xA500U)
++#define PRCRN1					*((volatile uint32_t *)0x80294200)
++#define PRCRS1					*((volatile uint32_t *)0x81296000)
++#define SSTPCR71				*((volatile uint32_t *)0x8129020C)
++#define CPU1HALT				*((volatile uint32_t *)0x81295010)
++
++static void bsp_copy_8byte (uintptr_t * src, uintptr_t * dst, uintptr_t bytesize);
++#endif
+ 
+ static console_t rzt2h_bl2_console;
+ 
+@@ -59,6 +73,95 @@ int bl2_plat_handle_post_image_load(unsigned int image_id)
+ 		memcpy(&params->bl33_ep_info, &bl_mem_params->ep_info,
+ 			sizeof(entry_point_info_t));
+ 		break;
++#if RZN2H_CA55_CR52_BL2_BOOT
++	case BL22_IMAGE_ID:
++	{
++		uintptr_t src = RZT2H_SPIROM_A55_R52_FW_BASE;
++		uintptr_t dst = BSP_PRV_SECTION_SECONDARY_RAM_START;
++		uintptr_t size = BL22_FW_SIZE;
++
++#if (PLAT_A551_BL2_BOOT || PLAT_A552_BL2_BOOT || PLAT_A553_BL2_BOOT)
++		/* Un-lock writing to CA55_RVBAxy registers */
++		sys_safetybase_unlock(PRCRx_SYS_CTRL);
++
++		/* Reset flag for secondary core to stop  booting */
++		mmio_write_32(SEMAR0, 0);
++#elif (PLAT_R520_BL2_BOOT || PLAT_R521_BL2_BOOT)
++		/* 
++		 * Setting Area protect register (Non-Safety and Safety)
++		 * Enables writing to the registers related to the clock generation circuit. 
++		 * Enables writing to the registers related to low power consumption and reset. 
++		 * Enables writing to the registers related to GPIO settings. 
++		 * Enables writing to the registers related to System control.
++		 */
++		PRCRN1 = BSP_PRV_PRCR_KEY | 0xF;
++		PRCRS1 = BSP_PRV_PRCR_KEY | 0xF;
++#else
++		NOTICE("Second boot core is not selected (A55/R52)\n");
++#endif
++		bsp_copy_8byte((uintptr_t*)src, (uintptr_t*)dst, size);
++
++#if PLAT_A551_BL2_BOOT
++		/* Write rebase address */
++		mmio_write_32(CA55_RVBAL1, (uint32_t)(BSP_PRV_IMAGE_INFO_BRANCH_ADDRESS & 0xFFFFFFFC));
++		mmio_write_32(CA55_RVBAH1, (uint32_t)((0) & 0xFF));
++
++		sys_a55_sw_reset();
++
++		/* Lock writing to CA55_RVBAxy registers */
++		sys_safetybase_lock(PRCRx_SYS_CTRL);
++#elif PLAT_A552_BL2_BOOT
++		/* Write rebase address */
++		mmio_write_32(CA55_RVBAL2, (uint32_t)(BSP_PRV_IMAGE_INFO_BRANCH_ADDRESS & 0xFFFFFFFC));
++		mmio_write_32(CA55_RVBAH2, (uint32_t)((0) & 0xFF));
++
++		sys_a55_sw_reset();
++
++		/* Lock writing to CA55_RVBAxy registers */
++		sys_safetybase_lock(PRCRx_SYS_CTRL);
++#elif PLAT_A553_BL2_BOOT
++		/* Write rebase address */
++		mmio_write_32(CA55_RVBAL3, (uint32_t)(BSP_PRV_IMAGE_INFO_BRANCH_ADDRESS & 0xFFFFFFFC));
++		mmio_write_32(CA55_RVBAH3, (uint32_t)((0) & 0xFF));
++
++		sys_a55_sw_reset();
++
++		/* Lock writing to CA55_RVBAxy registers */
++		sys_safetybase_lock(PRCRx_SYS_CTRL);
++#elif PLAT_R520_BL2_BOOT
++		uint32_t * dst_cpu0 = (uint32_t *) BSP_PRV_ATCM_AXIS_CR520_ADDRESS;
++
++		/* Store the instruction code to start address of the ATCM of CPU0 via AXIS interface*/
++		*dst_cpu0++ = BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR520;
++		*dst_cpu0++ = BSP_PRV_IMAGE_INFO_BRANCH_ADDRESS;
++
++		/* Reset CR52_0 and release the reset state */
++		mmio_write_32(SWRCPU0, 0x4321A502);
++#elif PLAT_R521_BL2_BOOT
++		R_BSP_MODULE_START(FSP_IP_CR52, 1U);
++
++		/* Release CR52_1 from the reset state */
++		mmio_write_32(SWRCPU1, 0x00000000);
++
++		/* Release from the slave stop state */
++		SSTPCR71 = (uint32_t) ((uintptr_t) (SSTPCR7 & ~R_SSC_SSTPCR7_AXIS1_REQ_Msk));
++
++		/* Polling ACK bit in SSTPCR */
++		FSP_HARDWARE_REGISTER_WAIT((SSTPCR7 & (1 << R_SSC_SSTPCR7_AXIS1_ACK_Pos)), 0);
++
++		uint64_t * dst_cpu1 = (uint64_t *) BSP_PRV_ATCM_AXIS_CR521_ADDRESS;
++
++		/* Store the instruction code to start address of the ATCM of CPU1 via AXIS interface */
++		*dst_cpu1++ = BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR521;
++		*dst_cpu1++ = BSP_PRV_IMAGE_INFO_BRANCH_ADDRESS;
++		__asm volatile ("DSB SY");
++
++		/* Start instruction fetch by writing 0 to CPU1HALT bit in CPU1HALT register */
++		CPU1HALT = 0x00000000;
++#endif
++	}
++		break;
++#endif
+ 	default:
+ 		/* Do nothing in default case */
+ 		break;
+@@ -137,7 +240,11 @@ void bl2_el3_plat_arch_setup(void)
+ 	};
+ 
+ 	setup_page_tables(bl2_regions, rzt2h_mmap);
+-	enable_mmu_el3(0);
++#if RZN2H_CA55_CR52_BL2_BOOT
++	enable_mmu_el3(1);
++#else
++ 	enable_mmu_el3(0);
++#endif
+ }
+ 
+ void bl2_platform_setup(void)
+@@ -179,3 +286,29 @@ void bl2_platform_setup(void)
+ 	NOTICE("BL2: PART NUMBER: 0X%x\n", sys_get_platform_part_number());
+ 	NOTICE("BL2: PRODUCT VERSION: 0X%x\n", sys_get_platform_product_version());
+ }
++
++#if RZN2H_CA55_CR52_BL2_BOOT
++static void bsp_copy_8byte (uintptr_t * src, uintptr_t * dst, uintptr_t bytesize)
++{
++	bytesize = ((bytesize + (sizeof(uint64_t) - 1)) / sizeof(uint64_t));
++
++	__asm volatile (
++	"    MOV    x1, %0                    \n"
++	"    MOV    x2, %1                    \n"
++	"    MOV    x3, %2                    \n"
++	"    MOV    x4, #0                    \n"
++	"copy_to_dst:                         \n"
++	"    CMP    x3, x4                    \n"
++	"    B.EQ   copy_to_dst_end           \n"
++	"    LDR    x0, [x1], #8              \n"
++	"    STR    x0, [x2], #8              \n"
++	"    DSB SY                           \n"
++	"    ADD    x4, x4, #1                \n"
++	"    B.NE   copy_to_dst               \n"
++	"copy_to_dst_end:                     \n"
++	::"r" (src),
++	"r" (dst),
++	"r" (bytesize)
++	: "memory", "x0", "x1", "x2", "x3", "x4");
++}
++#endif
+diff --git a/plat/renesas/rz/soc/t2h/bl31_plat_setup.c b/plat/renesas/rz/soc/t2h/bl31_plat_setup.c
+index 91f3754a8..8ef1d6a99 100644
+--- a/plat/renesas/rz/soc/t2h/bl31_plat_setup.c
++++ b/plat/renesas/rz/soc/t2h/bl31_plat_setup.c
+@@ -16,6 +16,8 @@
+ #include <rz_private.h>
+ #include <rz_soc_def.h>
+ 
++#include <common/debug.h>
++#include <lib/mmio.h>
+ 
+ static console_t rzt2h_bl31_console;
+ static bl2_to_bl31_params_mem_t from_bl2;
+@@ -82,6 +84,11 @@ void bl31_platform_setup(void)
+ 	/* initialize GIC-600 */
+ 	plat_gic_driver_init();
+ 	plat_gic_init();
++
++#if RZN2H_CA55_CR52_BL2_BOOT && (PLAT_A551_BL2_BOOT || PLAT_A552_BL2_BOOT || PLAT_A553_BL2_BOOT)
++	/* Turns on flag to indicate the second core continues to boot */
++	mmio_write_32(SEMAR0, 1);
++#endif
+ }
+ 
+ entry_point_info_t *bl31_plat_get_next_image_ep_info(uint32_t type)
+diff --git a/plat/renesas/rz/soc/t2h/drivers/sys.c b/plat/renesas/rz/soc/t2h/drivers/sys.c
+index 432235823..8aa56b374 100644
+--- a/plat/renesas/rz/soc/t2h/drivers/sys.c
++++ b/plat/renesas/rz/soc/t2h/drivers/sys.c
+@@ -182,3 +182,32 @@ bool sys_check_platform_core_count(void)
+ 
+ 	return res;
+ }
++
++void sys_a55_sw_reset(void)
++{
++	/* Disable Write Protection */
++	sys_safetybase_unlock(PRCRx_LOW_POWER);
++#if PLAT_A551_BL2_BOOT
++	/* Release the reset state of CA55 cluster */
++	mmio_write_32(SWR55C, 0x00000000);
++
++	/* Release the reset state of each CA55_1 core */
++	mmio_write_32(SWR551, 0x00000000);
++#elif PLAT_A552_BL2_BOOT
++	/* Release the reset state of CA55 cluster */
++	mmio_write_32(SWR55C, 0x00000000);
++	
++	/* Release the reset state of each CA55_2 core */
++	mmio_write_32(SWR552, 0x00000000);
++#elif PLAT_A553_BL2_BOOT
++	/* Release the reset state of CA55 cluster */
++	mmio_write_32(SWR55C, 0x00000000);
++
++	/* Release the reset state of each CA55_3 core */
++	mmio_write_32(SWR553, 0x00000000);
++#else
++	// Do nothing
++#endif
++	/* Enable Write Protection */
++	sys_safetybase_lock(PRCRx_LOW_POWER);
++}
+diff --git a/plat/renesas/rz/soc/t2h/include/sys.h b/plat/renesas/rz/soc/t2h/include/sys.h
+index 169641118..a03035fb0 100644
+--- a/plat/renesas/rz/soc/t2h/include/sys.h
++++ b/plat/renesas/rz/soc/t2h/include/sys.h
+@@ -31,5 +31,6 @@ extern uint32_t sys_get_platform_part_number(void);
+ extern uint32_t sys_get_platform_product_version(void);
+ extern uint32_t sys_get_platform_core_count(void);
+ extern bool sys_check_platform_core_count(void);
++extern void sys_a55_sw_reset(void);
+ 
+ #endif	/* __SYS_H__ */
+diff --git a/plat/renesas/rz/soc/t2h/include/sys_regs.h b/plat/renesas/rz/soc/t2h/include/sys_regs.h
+index 53d4f39d4..70ab4fe02 100644
+--- a/plat/renesas/rz/soc/t2h/include/sys_regs.h
++++ b/plat/renesas/rz/soc/t2h/include/sys_regs.h
+@@ -57,6 +57,8 @@
+ #define	SWR552								(SYS_SAFETY_BASE + 0x00000234)
+ #define	SWR553								(SYS_SAFETY_BASE + 0x00000238)
+ 
++#define SWRCPU0								(SYS_SAFETY_BASE + 0x00000220)
++#define SWRCPU1								(SYS_SAFETY_BASE + 0x00000224)
+ 
+ #define MRCTLI								(SYS_SAFETY_BASE + 0x00000260)
+ 
+diff --git a/plat/renesas/rz/soc/t2h/plat_storage.c b/plat/renesas/rz/soc/t2h/plat_storage.c
+index c2bc445d2..c0366383e 100644
+--- a/plat/renesas/rz/soc/t2h/plat_storage.c
++++ b/plat/renesas/rz/soc/t2h/plat_storage.c
+@@ -122,7 +122,23 @@ static const struct plat_io_policy xspi1_fip_policy = {
+ 	(uintptr_t) &xspi1_block_spec,
+ 	&open_memmap
+ };
++
++#if (RZN2H_CA55_CR52_BL2_BOOT && !TRUSTED_BOARD_BOOT)
++static const io_block_spec_t spirom_bl22_image_spec = {
++	.offset = RZT2H_SPIROM_A55_R52_FW_BASE,
++	.length = RZT2H_A55_R52_FW_SIZE,
++};
++
++static const struct plat_io_policy spirom_bl22_image_policy = {
++	&memdrv_dev_handle,
++	(uintptr_t) &spirom_bl22_image_spec,
++	&open_memmap
++};
++
++static struct plat_io_policy policies[MAX_NUMBER_IDS] = {
++#else
+ static struct plat_io_policy policies[] = {
++#endif
+ 	/* FIP_IMAGE_ID structure is added to this array on a bootmode basis */
+ 
+ 	[BL31_IMAGE_ID] = {
+@@ -213,6 +229,9 @@ static void update_dev_policies(uint16_t boot_mode)
+ 	case SYS_BOOT_MODE_XSPI0_x1:
+ 	case SYS_BOOT_MODE_XSPI0_x8:
+ 		policies[FIP_IMAGE_ID] = xspi0_fip_policy;
++#if (RZN2H_CA55_CR52_BL2_BOOT && !TRUSTED_BOARD_BOOT)
++		policies[BL22_IMAGE_ID]	= spirom_bl22_image_policy;
++#endif
+ 		break;
+ 
+ 	case SYS_BOOT_MODE_XSPI1_x1:
+-- 
+2.34.1
+

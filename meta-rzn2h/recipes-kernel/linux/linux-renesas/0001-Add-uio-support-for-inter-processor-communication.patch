@@ -1,0 +1,74 @@
+diff --git a/arch/arm64/boot/dts/renesas/r9a09g087-multi-os.dtsi b/arch/arm64/boot/dts/renesas/r9a09g087-multi-os.dtsi
+new file mode 100644
+index 000000000000..722095610095
+--- /dev/null
++++ b/arch/arm64/boot/dts/renesas/r9a09g087-multi-os.dtsi
+@@ -0,0 +1,53 @@
++// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++/*
++ * Device Tree Source for the RZ/N2H SoC
++ *
++ * Copyright (C) 2023 Renesas Electronics Corp.
++ */
++
++ / {
++	vring-ctl0@3e1000000 {
++		compatible = "vring_uio";
++		reg = <0x03 0xe1000000 0x0 0x100000>;
++		no-map;
++	};
++
++	vring-ctl1@3e1100000 {
++		compatible = "vring_uio";
++		reg = <0x03 0xe1100000 0x0 0x100000>;
++		no-map;
++	};
++
++	vring-shm0@3e1200000 {
++		compatible = "shm_uio";
++		reg = <0x03 0xe1200000 0x0 0x300000>;
++		no-map;
++	};
++
++	vring-shm1@3e1500000 {
++		compatible = "shm_uio";
++		reg = <0x03 0xe1500000 0x0 0x300000>;
++		no-map;
++	};
++
++	rsctbl@3e0000000 {
++		compatible = "shm_uio";
++		reg = <0x03 0xe0000000 0x0 0x1000>;
++		no-map;
++	};
++
++	intercpu-shm@3e0001000 {
++		compatible = "shm_uio";
++		reg = <0x03 0xe0001000 0x0 0x1000>;
++		no-map;
++	};
++
++	mbox-uio@802A0000 {
++		compatible = "mbox_uio";
++		reg = <0x0 0x802A0000 0x0 0x1000>,
++			<0x0 0x812A0000 0x0 0x1000>;
++		interrupt-parent = <&gic>;
++		interrupts = <GIC_SPI 1 IRQ_TYPE_EDGE_RISING>;
++		status = "okay";
++	};
++};
+diff --git a/arch/arm64/boot/dts/renesas/r9a09g087m44-dev.dts b/arch/arm64/boot/dts/renesas/r9a09g087m44-dev.dts
+index d52cfff5fad3..80b55e73b30d 100644
+--- a/arch/arm64/boot/dts/renesas/r9a09g087m44-dev.dts
++++ b/arch/arm64/boot/dts/renesas/r9a09g087m44-dev.dts
+@@ -7,6 +7,7 @@
+ 
+ /dts-v1/;
+ #include "r9a09g087.dtsi"
++#include "r9a09g087-multi-os.dtsi"
+ #include <dt-bindings/pinctrl/rzt2h-pinctrl.h>
+ #include <dt-bindings/gpio/gpio.h>
+ #include <dt-bindings/net/rzt2h-ethss.h>
+-- 
+2.25.1
+

@@ -1,0 +1,20 @@
+diff --git a/arch/arm64/boot/dts/renesas/r9a09g087m44-dev.dts b/arch/arm64/boot/dts/renesas/r9a09g087m44-dev.dts
+index 2eb253791612..981e369f50f9 100644
+--- a/arch/arm64/boot/dts/renesas/r9a09g087m44-dev.dts
++++ b/arch/arm64/boot/dts/renesas/r9a09g087m44-dev.dts
+@@ -148,6 +148,12 @@ global_cma: linux,cma@D0000000 {
+ 			reusable;
+ 			reg = <0x0 0xD0000000 0x0 0x10000000>;
+ 		};
++
++		ca55ddr: ca55ddr@C6000000 {
++			compatible = "shared-dma-pool";
++			reg = <0x0 0xC6000000 0x0 0x900000>;
++			no-map;
++		};			
+ 	};
+ 
+ 	reg_1p8v: regulator0 {
+-- 
+2.34.1
+

@@ -1,0 +1,18 @@
+diff --git a/board/renesas/rzn2h-dev/rzn2h-dev.c b/board/renesas/rzn2h-dev/rzn2h-dev.c
+index 8f6d91ccb4..c25bbadf6e 100755
+--- a/board/renesas/rzn2h-dev/rzn2h-dev.c
++++ b/board/renesas/rzn2h-dev/rzn2h-dev.c
+@@ -217,9 +217,9 @@ void s_init(void)
+ 	*(volatile u64 *)PFC(34)	= (*(volatile u64 *)PFC(34) & 0xffff000000000000)
+ 					| ((u64)0xf << 40) | ((u64)0xf << 32) | (0xf << 24) | (0xf << 16) | (0xf << 8) | (0xf << 0);
+ 
+-	*(volatile u8 *)PMC(0)		|= BIT(3)|BIT(2)|BIT(1)|BIT(0);
+ 	*(volatile u64 *)PFC(0)		= (*(volatile u64 *)PFC(0) & 0xffffffff00000000)
+ 					|(0xf << 24) | (0xf << 16) | (0xf << 8) | (0xf << 0);
++	*(volatile u8 *)PMC(0)		|= BIT(3)|BIT(2)|BIT(1)|BIT(0);
+ 
+ 	/* GMAC1_MDC, GMAC1_MDIO */
+ 	*(volatile u8 *)PMC(26)		|= BIT(2)|BIT(1);
+-- 
+2.34.1
+

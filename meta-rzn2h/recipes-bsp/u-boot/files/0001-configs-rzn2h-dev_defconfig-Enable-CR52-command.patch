@@ -1,0 +1,15 @@
+diff --git a/configs/rzn2h-dev_defconfig b/configs/rzn2h-dev_defconfig
+index a9d3ff6ae0..de0c48f7ac 100755
+--- a/configs/rzn2h-dev_defconfig
++++ b/configs/rzn2h-dev_defconfig
+@@ -50,6 +50,7 @@ CONFIG_CMD_EXT4=y
+ CONFIG_CMD_EXT4_WRITE=y
+ CONFIG_CMD_FAT=y
+ CONFIG_CMD_FS_GENERIC=y
++CONFIG_CMD_CR52=y
+ CONFIG_OF_CONTROL=y
+ CONFIG_OF_PLATDATA=y
+ CONFIG_OF_LIST="rzn2h-dev"
+-- 
+2.34.1
+

@@ -1,0 +1,204 @@
+diff --git a/cmd/Kconfig b/cmd/Kconfig
+index 6834bbd82f..e7c5544f55 100644
+--- a/cmd/Kconfig
++++ b/cmd/Kconfig
+@@ -47,6 +47,14 @@ config HUSH_SELECTABLE
+ 	default y if HUSH_OLD_PARSER && HUSH_MODERN_PARSER
+ endmenu
+ 
++menu "Renesas specific commands"
++
++config CMD_CR52
++	bool "RZ/T2H CR52 commands"
++	help
++	  Commands used to enable and control the embedded CR52 in the RZ/T2H.
++endmenu
++
+ config CMDLINE_EDITING
+ 	bool "Enable command line editing"
+ 	default y
+diff --git a/cmd/Makefile b/cmd/Makefile
+index 87133cc27a..138b00d751 100644
+--- a/cmd/Makefile
++++ b/cmd/Makefile
+@@ -51,6 +51,7 @@ obj-$(CONFIG_CMD_CONFIG) += config.o
+ obj-$(CONFIG_CMD_CONITRACE) += conitrace.o
+ obj-$(CONFIG_CMD_CONSOLE) += console.o
+ obj-$(CONFIG_CMD_CPU) += cpu.o
++obj-$(CONFIG_CMD_CR52) += cr52.o
+ obj-$(CONFIG_CMD_DATE) += date.o
+ obj-$(CONFIG_CMD_DEMO) += demo.o
+ obj-$(CONFIG_CMD_DM) += dm.o
+diff --git a/cmd/cr52.c b/cmd/cr52.c
+new file mode 100644
+index 0000000000..41724f8467
+--- /dev/null
++++ b/cmd/cr52.c
+@@ -0,0 +1,164 @@
++#include <common.h>
++#include <command.h>
++
++DECLARE_GLOBAL_DATA_PTR;
++
++#define PRCRN                                           (0x80294200)    // Register Write Protection for Non-safety Area
++#define PRCRS                                           (0x81296000)    // Register Write Protection for Safety Area
++#define SWRCPU0                                         (0x81280220)    // CPU0 Software Reset Register
++#define SWRCPU1                                         (0x81280224)    // CPU1 Software Reset Register
++#define MSTPCRN                                         (0x81280334)    // Module Stop Control Register N 
++#define SSTPCR7                                         (0x8129020C)    // Slave Stop Control Register 
++#define CPU1HALT                                        (0x81295010)    // CPU1 HALT Control Register
++
++#define RZT2H_SYS_RAM_BASE                              (0x10000000)    // Systen RAM base
++#define RZT2H_SYS_RAM_SIZE                              (0x00200000)    // Systen RAM size
++#define RZT2H_DDR_MIRROR_0_BASE                         (0xC0000000)    // DDR Mirror 0 base
++
++#define CR521_MODULE_STOP_MASK                          (0x00000002)    // Bit mask for CR52_1 stop control in MSTPCRN register
++#define SSTPCR7_AXIS1_ACK_MASK                          (0x00000020)    // Bit mask for AXIS1_ACK in SSTPCR7 register
++
++#define BSP_PRV_ATCM_AXIS_CR520_ADDRESS                 (0x20000000)    // Base address of the AXIS interface CPU0
++#define BSP_PRV_ATCM_AXIS_CR521_ADDRESS                 (0x21000000)    // Base address of the AXIS interface CPU1
++
++#define BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR520     (0xE51FF004)    // Branch instruction for CPU0  
++#define BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR521     (0xE51FF000)    // Branch instruction for CPU1
++
++/* Key code for writing PRCR register */
++#define BSP_PRV_PRCR_KEY                                (0x0000A500)
++#define PRCR_WRITE_ENABLE_ALL_MASK                      (0x0000000F)
++
++/* Key code for writing reset register */
++#define BSP_PRV_RESET_RELEASE_KEY                       (0x00000000)
++#define BSP_PRV_RESET_KEY_AUTO_RELEASE                  (0x4321A502)
++
++void cr520_boot(u32 sysram_addr)
++{
++    u32 start_addr;
++
++    /* Store the instruction code to start address of the ATCM of CPU0 via AXIS interface*/
++    start_addr = sysram_addr + 0x1000;
++    *(volatile u32 *) BSP_PRV_ATCM_AXIS_CR520_ADDRESS         = BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR520;
++    *(volatile u32 *) (BSP_PRV_ATCM_AXIS_CR520_ADDRESS + 0x4) = start_addr;
++
++    /* Reset CR52_0 and release the reset state by setting 0x4321A502 to SWRCPU0 register */
++    *(volatile u32 *) SWRCPU0 = BSP_PRV_RESET_KEY_AUTO_RELEASE;
++}
++
++void cr521_boot (u32 sysram_addr)
++{
++    u32 start_addr, reg_val;
++    
++    /* Release from the module stop state by resetting MSTPCRN01 bit in MSTPCRN register */ 
++    reg_val = *(volatile u32 *) MSTPCRN; 
++    reg_val &= ~CR521_MODULE_STOP_MASK;
++    *(volatile u32 *) MSTPCRN = reg_val;
++
++    /* Release CR52_1 from the reset state by setting 0x00000000 to SWRCPU1 register */
++    *(volatile u32 *) SWRCPU1 = BSP_PRV_RESET_RELEASE_KEY;
++
++    /* Release from the slave stop state by controlling AXIS1_REQ and AXIS1_ACK bits in SSTPCR7 register */
++    *(volatile u32 *) SSTPCR7 = 0x00000000;
++    do {
++        reg_val = *(volatile u32 *) SSTPCR7;
++    } while ((reg_val & SSTPCR7_AXIS1_ACK_MASK) != 0);
++
++    /* Store the instruction code to start address of the ATCM of CPU1 via AXIS interface */
++    start_addr = sysram_addr + 0x1000;
++    *(volatile u32 *) BSP_PRV_ATCM_AXIS_CR521_ADDRESS         = BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR521;
++    *(volatile u32 *) (BSP_PRV_ATCM_AXIS_CR521_ADDRESS + 0x8) = start_addr;
++
++    /* Start instruction fetch by writing 0 to CPU1HALT bit in CPU1HALT register */
++    *(volatile u32 *) CPU1HALT = 0x00000000;
++}
++
++void cr52_start(u8 core, u32 sysram_addr, u32 size)
++{
++    void *src, *dst; 
++
++    /* Setting Area protect register (Non-Safety and Safety)
++	* Enables writing to the registers related to the clock generation circuit. 
++	* Enables writing to the registers related to low power consumption and reset. 
++	* Enables writing to the registers related to GPIO settings. 
++	* Enables writing to the registers related to System control.
++	*/    
++    *(volatile u32 *) PRCRN = BSP_PRV_PRCR_KEY | PRCR_WRITE_ENABLE_ALL_MASK; 
++    *(volatile u32 *) PRCRS = BSP_PRV_PRCR_KEY | PRCR_WRITE_ENABLE_ALL_MASK; 
++
++    /* Copying firmware from DDR to SYSRAM */
++    dst = (void *) (uintptr_t) sysram_addr;
++    src = (void *) (RZT2H_DDR_MIRROR_0_BASE + 0x06001000);
++    memcpy(dst, src, size);
++
++    /* Start the CR52 program by selecting either CR52_0 or CR52_1 */
++    core ? cr521_boot(sysram_addr) : cr520_boot(sysram_addr);
++}
++
++int do_cr52(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[])
++{
++    u32 sysram_addr, size;
++
++    /* Need at least two arguments */
++    if (argc < 2)
++        goto usage;
++
++	if (strcmp(argv[1], "start_cr520") == 0) {
++        /* System RAM address and size of firmware are required */
++        if (argc < 4)
++            goto usage;
++        
++        sysram_addr = simple_strtoul(argv[2], NULL, 16);
++        size        = simple_strtoul(argv[3], NULL, 16);
++
++        if ((sysram_addr >= RZT2H_SYS_RAM_BASE) && (sysram_addr < (RZT2H_SYS_RAM_BASE + RZT2H_SYS_RAM_SIZE))) {
++            if (size < RZT2H_SYS_RAM_SIZE) {
++                cr52_start (0, sysram_addr, size);
++            } else 
++                goto error2;
++        } else 
++            goto error1;
++
++    } else if (strcmp(argv[1], "start_cr521") == 0) {
++        /* System RAM address and size of firmware are required */
++        if (argc < 4)
++            goto usage;
++
++        sysram_addr = simple_strtoul(argv[2], NULL, 16);
++        size        = simple_strtoul(argv[3], NULL, 16);
++        
++        if ((sysram_addr >= RZT2H_SYS_RAM_BASE) && (sysram_addr < (RZT2H_SYS_RAM_BASE + RZT2H_SYS_RAM_SIZE))) {
++            if (size < RZT2H_SYS_RAM_SIZE) {
++                cr52_start (1, sysram_addr, size);
++            } else 
++                goto error2;
++        } else 
++            goto error1;
++
++	} else
++        goto usage;
++
++    return 0;
++
++error1:
++    printf("Error: sysram_addr (0x%08X) out of range\n\n", sysram_addr);
++    goto usage;
++
++error2:
++    printf("Error: size 0x%X (%u bytes) is too large for SYSRAM\n\n", size, size);
++    goto usage;
++
++usage:
++    return CMD_RET_USAGE; 
++}
++
++static char cr52_help_text[] =
++    "\tstart_cr520 [sysram_addr] [size] - Reset and start CR52_0 with firmware\n"
++    "\t\tlocated at address [sysram_addr] with a firmware size of [size]\n"
++    "\tstart_cr521 [sysram_addr] [size] - Reset and start CR52_1 with firmware\n"
++    "\t\tlocated at address [sysram_addr] with a firmware size of [size]\n"
++    "";
++
++U_BOOT_CMD(
++    cr52, CONFIG_SYS_MAXARGS, 1, do_cr52, 
++    "Control CR52 CPU", cr52_help_text 
++);
+-- 
+2.34.1
+
