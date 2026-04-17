@@ -25,6 +25,7 @@ To support RZ Linux BSP Plus for Kernel 6.12 v3.0, please check out BSP-PLUS-K6.
     $ cd ../
 ```
 (Optional) Regarding Graphics and Video Codecs packages, please download from [Renesas.com](https://www.renesas.com/) website.
+
 To apply Multi-OS feature package, follow the steps below.
    1. Copy the contents of this repository to `$WORK/meta-rz-features`
    2. Run the following commands to add the Multi-OS layer
@@ -52,8 +53,12 @@ To apply Multi-OS feature package, follow the steps below.
       #MACHINE_FEATURES:append = " RZG3S_AWO_SUPPORT"
       ```
    5. (Optional) RemoteProc support can be enabled by modifying the following lines in `meta-rz-features/meta-rz-multi-os/meta-<platform>/conf/layer.conf`:
-
-      For the CM33 core on the RZ/G series, uncomment the following line:
+   
+      For the CM33 core on the RZ/G2x series, uncomment the following line:
+      ```
+      #MACHINE_FEATURES:append = " CM33_REMOTEPROC"
+      ```
+      For the CM33 core on the RZ/G3S, uncomment the following line:
       ```
       #MACHINE_FEATURES:append = " RZG3S_CM33_REMOTEPROC"
       ```
@@ -63,7 +68,7 @@ To apply Multi-OS feature package, follow the steps below.
       ```
    6. (Optional) Firmware loading support in BL2 of Trusted Firmware-A can be enabled by modifying the following lines in `meta-rz-features/meta-rz-multi-os/meta-<platform>/conf/layer.conf`:
 
-      For CM33 firmware on the RZ/G series, uncomment the following line:
+      For CM33 firmware on the RZ/G3S, uncomment the following line:
       ```
       #MACHINE_FEATURES:append = " RZG3S_CM33_FIRMWARE_LOAD"
       ```
