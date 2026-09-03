@@ -1,0 +1,123 @@
+From 4633561e4e0bf5449655b5d35cad23b08dfbf965 Mon Sep 17 00:00:00 2001
+From: Chen Tao <tao.chen.xc@renesas.com>
+Date: Mon, 22 Jun 2026 11:42:56 +0900
+Subject: [PATCH 1/5] fix: disable MMU and D-cache before CA55 WFI
+
+---
+ plat/renesas/rz/soc/g3l/drivers/core_ctrl.c |  5 +--
+ plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c |  4 +--
+ plat/renesas/rz/soc/g3l/plat_pm.c           | 40 ++++++++++++++-------
+ 3 files changed, 30 insertions(+), 19 deletions(-)
+
+diff --git a/plat/renesas/rz/soc/g3l/drivers/core_ctrl.c b/plat/renesas/rz/soc/g3l/drivers/core_ctrl.c
+index 77aee997a..0fd3acf6d 100644
+--- a/plat/renesas/rz/soc/g3l/drivers/core_ctrl.c
++++ b/plat/renesas/rz/soc/g3l/drivers/core_ctrl.c
+@@ -141,14 +141,11 @@ void core_ctrl_set_in_standby(uint32_t coreid)
+ {
+ 	/* Request transition to Cortex-A55 CoreX Sleep Mode */
+ 	mmio_write_32(SYS_LP_CTL1, mmio_read_32(SYS_LP_CTL1) | (SYS_LP_CTL1_CA55SLEEP_REQ << coreid));
++	dsb();
+ 
+ 	/* Enter the Cortex-A55 Sleep Mode */
+ 	mmio_write_32(SYS_LP_CTL2, mmio_read_32(SYS_LP_CTL2) | SYS_LP_CTL2_CA55_STBYCTL);
+-
+-	/* Issue Barrier instruction */
+-	isb();
+ 	dsb();
+-	dcsw_op_all(DCCISW);
+ }
+ 
+ void core_ctrl_warm_boot(uint32_t coreid)
+diff --git a/plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c b/plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c
+index cee0d2524..cd1736ed4 100644
+--- a/plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c
++++ b/plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c
+@@ -55,10 +55,10 @@ static void __dead2 pwrc_go_suspend_to_ram(void)
+ 
+ void __dead2 pwrc_suspend_to_ram(void)
+ {
+-	/* flash all caches */
++	/* flush all caches */
+ 	dcsw_op_all(DCCISW);
+ 
+-	/* disable MMU */
++	/* disable MMU and cache */
+ 	disable_mmu_el3();
+ 
+ 	pwrc_func_call_with_pmustack((uintptr_t)pwrc_go_suspend_to_ram, NULL);
+diff --git a/plat/renesas/rz/soc/g3l/plat_pm.c b/plat/renesas/rz/soc/g3l/plat_pm.c
+index c398636ac..ead1fb396 100644
+--- a/plat/renesas/rz/soc/g3l/plat_pm.c
++++ b/plat/renesas/rz/soc/g3l/plat_pm.c
+@@ -77,6 +77,32 @@ static int rz_validate_ns_entrypoint(uintptr_t ns_entrypoint)
+ 	return PSCI_E_INVALID_ADDRESS;
+ }
+ 
++static void __dead2 rz_pwr_domain_pwr_down_wfi(const psci_power_state_t *target_state)
++{
++#if PLAT_SYSTEM_SUSPEND
++	if (SYSTEM_PWR_STATE(target_state) == PLAT_MAX_OFF_STATE) {
++		pwrc_suspend_to_ram();
++		/* The system is expected to power down and not return from the function above. */
++		panic();
++	}
++#endif /* PLAT_SYSTEM_SUSPEND */
++	/*
++	 * Perform cache maintenance - hardware control not used.
++	 * Cache is flushed and disabled to ensure that no dirtly
++	 * cache lines remain.
++	 */
++	dcsw_op_all(DCCISW);
++	disable_mmu_el3();
++
++	/* Issue Barrier Instruction */
++	isb();
++	dsb();
++
++	wfi();
++	ERROR("RZ/G3L Power Down: operation not handled.\n");
++	panic();
++}
++
+ #if PLAT_SYSTEM_SUSPEND
+ static void rz_program_trusted_mailbox(u_register_t mpidr, uintptr_t address)
+ {
+@@ -122,18 +148,6 @@ static void rz_pwr_domain_suspend_finish(const psci_power_state_t *target_state)
+ 	pwrc_setup();
+ }
+ 
+-static void __dead2 rz_pwr_domain_pwr_down_wfi(const psci_power_state_t *target_state)
+-{
+-
+-	if (SYSTEM_PWR_STATE(target_state) == PLAT_MAX_OFF_STATE) {
+-		pwrc_suspend_to_ram();
+-	}
+-
+-	wfi();
+-	ERROR("RZ/G3L Power Down: operation not handled.\n");
+-	panic();
+-}
+-
+ static void rz_get_sys_suspend_power_state(psci_power_state_t *req_state)
+ {
+ 	int i;
+@@ -242,6 +256,7 @@ static void __dead2 rzg3l_system_reset(void)
+ const plat_psci_ops_t rz_plat_psci_ops = {
+ 	/*****PSCI Common function*****/
+ 	.validate_ns_entrypoint				= rz_validate_ns_entrypoint,
++	.pwr_domain_pwr_down_wfi			= rz_pwr_domain_pwr_down_wfi,
+ 	/*****PSCI_CPU_SUSPEND_AARCH64*****/
+ 	.cpu_standby						= rz_cpu_standby,
+ 	/*****PSCI_CPU_ON_AARCH64*****/
+@@ -259,7 +274,6 @@ const plat_psci_ops_t rz_plat_psci_ops = {
+ #if PLAT_SYSTEM_SUSPEND
+ 	.pwr_domain_suspend					= rz_pwr_domain_suspend,
+ 	.pwr_domain_suspend_finish			= rz_pwr_domain_suspend_finish,
+-	.pwr_domain_pwr_down_wfi			= rz_pwr_domain_pwr_down_wfi,
+ 	.get_sys_suspend_power_state		= rz_get_sys_suspend_power_state,
+ #endif /* PLAT_SYSTEM_SUSPEND */
+ };
+-- 
+2.43.0
+

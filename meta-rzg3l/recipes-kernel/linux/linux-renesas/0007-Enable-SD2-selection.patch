@@ -1,0 +1,106 @@
+diff --git a/arch/arm64/boot/dts/renesas/r9a08g046l48-smarc.dts b/arch/arm64/boot/dts/renesas/r9a08g046l48-smarc.dts
+index cad5820..e5c544f 100644
+--- a/arch/arm64/boot/dts/renesas/r9a08g046l48-smarc.dts
++++ b/arch/arm64/boot/dts/renesas/r9a08g046l48-smarc.dts
+@@ -9,7 +9,7 @@
+ 
+ /* Switch selection settings */
+ #define SW_SD0_DEV_SEL		0
+-#define SW_SD2_DEV_SEL		0
++#define SW_SD2_DEV_SEL		1
+ #define SW_SDIO_M2E		0
+ #define SW_SER0_PMOD		1
+ #define SW_I3C_EN		0
+@@ -200,6 +200,18 @@
+ 	};
+ #endif
+ 
++#if SW_SD2_DEV_SEL
++        vqmmc_sd2_pvdd: vqmmc-sd2-pvdd {
++		compatible = "regulator-gpio";
++		regulator-name = "SD2_PVDD";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <3300000>;
++		gpios = <&pinctrl RZG3L_GPIO(K, 1) GPIO_ACTIVE_HIGH>;
++		gpios-states = <0>;
++		states = <3300000 0>, <1800000 1>;
++	};
++#endif
++
+ 	clk_ext_camera: clk_ext_camera {
+ 		compatible = "fixed-clock";
+ 		#clock-cells = <0>;
+@@ -438,6 +450,73 @@
+ 		};
+ 	};
+ 
++#if (SW_SD2_DEV_SEL)
++	sd2-pwr-en {
++		gpio-hog;
++		gpios = <RZG3L_GPIO(K, 2) GPIO_ACTIVE_HIGH>;
++		output-high;
++		line-name = "sd2_pwr_en";
++	};
++
++	sdhi2_pins: sd2 {
++		sd2-cd {
++			pinmux = <RZG3L_PORT_PINMUX(K, 0, 1)>; /* SD2_CD */
++		};
++
++		sd2-clk {
++			pinmux = <RZG3L_PORT_PINMUX(H, 0, 1)>; /* SD2_CLK */
++			power-source = <3300>;
++			renesas,sd_ch2_poc;
++		};
++
++		sd2-cmd {
++			pinmux = <RZG3L_PORT_PINMUX(H, 1, 1)>; /* SD2_CMD */
++			input-enable;
++			power-source = <3300>;
++			renesas,sd_ch2_poc;
++		};
++
++		sd2-data {
++			pinmux = <RZG3L_PORT_PINMUX(H, 2, 1)>, /* SD2_DAT0 */
++				 <RZG3L_PORT_PINMUX(H, 3, 1)>, /* SD2_DAT1 */
++				 <RZG3L_PORT_PINMUX(H, 4, 1)>, /* SD2_DAT2 */
++				 <RZG3L_PORT_PINMUX(H, 5, 1)>; /* SD2_DAT3 */
++			input-enable;
++			power-source = <3300>;
++			renesas,sd_ch2_poc;
++		};
++	};
++
++	sdhi2_pins_uhs: sd2-uhs {
++		sd2-cd {
++			pinmux = <RZG3L_PORT_PINMUX(K, 0, 1)>; /* SD2_CD */
++		};
++
++		sd2-clk {
++			pinmux = <RZG3L_PORT_PINMUX(H, 0, 1)>; /* SD2_CLK */
++			power-source = <1800>;
++			renesas,sd_ch2_poc;
++		};
++
++		sd2-cmd {
++			pinmux = <RZG3L_PORT_PINMUX(H, 1, 1)>; /* SD2_CMD */
++			input-enable;
++			power-source = <1800>;
++			renesas,sd_ch2_poc;
++		};
++
++		sd2-data {
++			pinmux = <RZG3L_PORT_PINMUX(H, 2, 1)>, /* SD2_DAT0 */
++				 <RZG3L_PORT_PINMUX(H, 3, 1)>, /* SD2_DAT1 */
++				 <RZG3L_PORT_PINMUX(H, 4, 1)>, /* SD2_DAT2 */
++				 <RZG3L_PORT_PINMUX(H, 5, 1)>; /* SD2_DAT3 */
++			input-enable;
++			power-source = <1800>;
++			renesas,sd_ch2_poc;
++		};
++	};
++#endif
++
+ 	usb0_pins: usb0 {
+ 		pinmux = <RZG3L_PORT_PINMUX(3, 1, 12)>, /* VBUS */
+ 			 <RZG3L_PORT_PINMUX(3, 0, 12)>; /* OVC */

@@ -1,0 +1,69 @@
+diff --git a/drivers/clk/renesas/r9a08g046-cpg.c b/drivers/clk/renesas/r9a08g046-cpg.c
+index b2c7668f69e7..215bd3915dcb 100644
+--- a/drivers/clk/renesas/r9a08g046-cpg.c
++++ b/drivers/clk/renesas/r9a08g046-cpg.c
+@@ -711,6 +711,11 @@ static const struct rzg2l_mod_clk r9a08g046_mod_clks[] = {
+ 					MSTOP(BUS_PERI_VIDEO1, BIT(11))),
+ 	DEF_MOD("lvds_clk_dot0",	R9A08G046_LVDS_CLK_DOT0, R9A08G046_CLK_M3, 0x61c, 1,
+ 					MSTOP(BUS_PERI_VIDEO1, BIT(11))),
++	DEF_MOD("cm33_clkin",       	R9A08G046_CM33_CLKIN, R9A08G046_CLK_P3, 0x504, 0,
++					MSTOP(BUS_PERI_CPU, BIT(0))),
++	DEF_MOD("cm33_tsclk",       	R9A08G046_CM33_TSCLK, R9A08G046_OSCCLK2, 0x504, 1,
++					MSTOP(BUS_PERI_CPU, BIT(0))),
++
+ };
+ 
+ static const struct rzg2l_reset r9a08g046_resets[] = {
+@@ -809,9 +814,15 @@ static const struct rzg2l_reset r9a08g046_resets[] = {
+ 	DEF_RST(R9A08G046_RSCI2_TRESETN, 0x918, 10),
+ 	DEF_RST(R9A08G046_RSCI3_TRESETN, 0x918, 11),
+ 	DEF_RST(R9A08G046_LVDS_RESET_N, 0x91c, 0),
++	DEF_RST(R9A08G046_CM33_NPORESET, 0x804, 0),
++	DEF_RST(R9A08G046_CM33_NSYSRESET, 0x804, 1),
++	DEF_RST(R9A08G046_CM33_MISCRESETN, 0x804, 2),
++
+ };
+ 
+ static const unsigned int r9a08g046_crit_mod_clks[] __initconst = {
++	MOD_CLK_BASE + R9A08G046_CM33_CLKIN,
++	MOD_CLK_BASE + R9A08G046_CM33_TSCLK,
+ 	MOD_CLK_BASE + R9A08G046_GIC600_GICCLK,
+ 	MOD_CLK_BASE + R9A08G046_IA55_PCLK,
+ 	MOD_CLK_BASE + R9A08G046_IA55_CLK,
+@@ -834,11 +845,11 @@ const struct rzg2l_cpg_info r9a08g046_cpg_info = {
+ 	/* Module Clocks */
+ 	.mod_clks = r9a08g046_mod_clks,
+ 	.num_mod_clks = ARRAY_SIZE(r9a08g046_mod_clks),
+-	.num_hw_mod_clks = R9A08G046_VBAT_BCLK + 1,
++	.num_hw_mod_clks = R9A08G046_CM33_TSCLK + 1,
+ 
+ 	/* Resets */
+ 	.resets = r9a08g046_resets,
+-	.num_resets = R9A08G046_VBAT_BRESETN + 1, /* Last reset ID + 1 */
++	.num_resets = R9A08G046_CM33_MISCRESETN + 1, /* Last reset ID + 1 */
+ 
+ 	.has_clk_mon_regs = true,
+ 
+diff --git a/include/dt-bindings/clock/r9a08g046-cpg.h b/include/dt-bindings/clock/r9a08g046-cpg.h
+index 1cf4e19901c1..b6db29772468 100644
+--- a/include/dt-bindings/clock/r9a08g046-cpg.h
++++ b/include/dt-bindings/clock/r9a08g046-cpg.h
+@@ -217,6 +217,8 @@
+ #define R9A08G046_I3C_TCLK		150
+ #define R9A08G046_I3C_PCLK		151
+ #define R9A08G046_VBAT_BCLK		152
++#define R9A08G046_CM33_CLKIN    	153
++#define R9A08G046_CM33_TSCLK    	154
+ 
+ /* R9A08G046 Resets */
+ #define R9A08G046_CA55_RST0_0		0
+@@ -337,5 +339,9 @@
+ #define R9A08G046_I3C_TRESETN		115
+ #define R9A08G046_I3C_PRESETN		116
+ #define R9A08G046_VBAT_BRESETN		117
++#define R9A08G046_CM33_NPORESET    	118
++#define R9A08G046_CM33_NSYSRESET   	119
++#define R9A08G046_CM33_MISCRESETN  	120
++
+ 
+ #endif /* __DT_BINDINGS_CLOCK_R9A08G046_CPG_H__ */

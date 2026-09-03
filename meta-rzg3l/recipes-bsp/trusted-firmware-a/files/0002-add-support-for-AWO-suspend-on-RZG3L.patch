@@ -1,0 +1,282 @@
+From 8093eba4687a483fcfc45778e38f007484892f4b Mon Sep 17 00:00:00 2001
+From: Chen Tao <tao.chen.xc@renesas.com>
+Date: Tue, 28 Jul 2026 17:39:32 +0900
+Subject: [PATCH 2/5] add support for AWO suspend on RZG3L
+
+---
+ plat/renesas/rz/board/g3l_smarc/pwrc_board.c  | 24 +++--------
+ plat/renesas/rz/common/g3l_common.mk          | 14 ++++++-
+ plat/renesas/rz/soc/g3l/drivers/cpg.c         | 42 ++++++-------------
+ plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c   |  6 +++
+ .../renesas/rz/soc/g3l/include/platform_def.h | 19 ++++++---
+ plat/renesas/rz/soc/g3l/platform.mk           |  8 +++-
+ 6 files changed, 57 insertions(+), 56 deletions(-)
+
+diff --git a/plat/renesas/rz/board/g3l_smarc/pwrc_board.c b/plat/renesas/rz/board/g3l_smarc/pwrc_board.c
+index 82e292db3..85a8fdd30 100644
+--- a/plat/renesas/rz/board/g3l_smarc/pwrc_board.c
++++ b/plat/renesas/rz/board/g3l_smarc/pwrc_board.c
+@@ -59,35 +59,23 @@
+ #define SLPBTN_WK_EN_STS_DISABLED	(uint8_t)(0 << 4)
+ 
+ #if IMAGE_BL2
+-#if defined(PLAT_SYSTEM_SUSPEND_awo)
++#if defined(PLAT_SYSTEM_SUSPEND_vbat) || defined(PLAT_SYSTEM_SUSPEND_awo)
+ bool pwrc_board_is_resume(void)
+ {
+-	uint8_t gpak_data = 0;
+-	pfc_riic_pmic_setup();
+-	riic_setup();
+-	riic_read(GP_ADDRESS, GP_ESR_ADDR, &gpak_data);
+-
+-	if ((gpak_data & SLP_EN_STS_MASK) == SLP_EN_STS_ENABLED) {
+-		return true;
+-	}
++	static bool is_warm_boot = false;
++	if (is_warm_boot)
++		return is_warm_boot;
+ 
+-	return false;
+-}
+-#endif
+-
+-#if defined(PLAT_SYSTEM_SUSPEND_vbat)
+-bool pwrc_board_is_resume(void)
+-{
+ 	uint8_t gpak_data = 0;
+ 	pfc_riic_pmic_setup();
+ 	riic_setup();
+ 	riic_read(GP_ADDRESS, GP_SR_ADDR, &gpak_data);
+ 
+ 	if ((gpak_data & SLP_HST_STS_MASK) == SLP_HST_STS_EVENT_OCCURRED) {
+-		return true;
++		is_warm_boot = true;
+ 	}
+ 
+-	return false;
++	return is_warm_boot;
+ }
+ #endif
+ 
+diff --git a/plat/renesas/rz/common/g3l_common.mk b/plat/renesas/rz/common/g3l_common.mk
+index c5a84f9a9..90f186d77 100644
+--- a/plat/renesas/rz/common/g3l_common.mk
++++ b/plat/renesas/rz/common/g3l_common.mk
+@@ -16,6 +16,7 @@ USE_COHERENT_MEM				:= 0
+ PLAT_M33_BOOT_SUPPORT			:= 0
+ PLAT_SYSTEM_SUSPEND				:= 0
+ PLAT_SUSPEND_MODE				:= none
++PLAT_BOOT_FROM_M33_SUPPORT			:= 0
+ TRUSTED_BOARD_BOOT				:= 0
+ PROTECTED_CHIPID				:= 1
+ SECURE_RTC						:= 0
+@@ -36,8 +37,18 @@ $(error Unknown suspend mode ${PLAT_SYSTEM_SUSPEND})
+ endif
+ endif
+ 
++ifeq (${PLAT_M33_BOOT_SUPPORT}, 1)
++ifneq (${PLAT_BOOT_FROM_M33_SUPPORT}, 0)
++$(error cannot enable both PLAT_BOOT_FROM_M33_SUPPORT and PLAT_M33_BOOT_SUPPORT)
++endif
++endif
++
++ifeq (${PLAT_BOOT_FROM_M33_SUPPORT}, 0)
++ifeq (${PLAT_M33_BOOT_SUPPORT}, 0)
+ ifeq (${PLAT_SUSPEND_MODE},awo)
+-override PLAT_M33_BOOT_SUPPORT	:= 1
++$(error PLAT_SUSPEND_MODE=awo is not supported when both PLAT_BOOT_FROM_M33_SUPPORT and PLAT_M33_BOOT_SUPPORT are disabled)
++endif
++endif
+ endif
+ 
+ $(eval $(call add_define,SECURE_RTC))
+@@ -46,6 +57,7 @@ $(eval $(call add_define,PLAT_TBBR_IMG_DEF))
+ $(eval $(call add_define,PLAT_EXTRA_LD_SCRIPT))
+ $(eval $(call add_define,PLAT_M33_BOOT_SUPPORT))
+ $(eval $(call add_define,PLAT_SYSTEM_SUSPEND))
++$(eval $(call add_define,PLAT_BOOT_FROM_M33_SUPPORT))
+ $(eval $(call add_define,PLAT_SYSTEM_SUSPEND_${PLAT_SUSPEND_MODE}))
+ $(eval $(call add_define,PLAT_EMMC_WRITE_ENABLE))
+ # Enable workarounds for selected Cortex-A55 erratas.
+diff --git a/plat/renesas/rz/soc/g3l/drivers/cpg.c b/plat/renesas/rz/soc/g3l/drivers/cpg.c
+index d664d590b..bab04f964 100644
+--- a/plat/renesas/rz/soc/g3l/drivers/cpg.c
++++ b/plat/renesas/rz/soc/g3l/drivers/cpg.c
+@@ -113,16 +113,11 @@ static const cpg_reg_setting_t cpg_pwrdown_ip_tbl[] = {
+ 	{ (uintptr_t)CPG_PWRDN_IP4,				0x03FF03FF }
+ };
+ 
+-#if defined(PLAT_SYSTEM_SUSPEND_awo)
+-static const cpg_reg_setting_t cpg_iso_mstop_tbl[] = {
+-	{ (uintptr_t)CPG_BUS_ACPU_MSTOP,		0x00070007 },
+-	{ (uintptr_t)CPG_BUS_PERI_COM_MSTOP,	0x3FFF3FFF },
+-	{ (uintptr_t)CPG_BUS_PERI_DDR_MSTOP,	0x00030003 },
+-	{ (uintptr_t)CPG_BUS_PERI_VIDEO1_MSTOP,	0xFFFFFFFF },
+-	{ (uintptr_t)CPG_BUS_TZCDDR_MSTOP,		0x000F000F },
+-	{ (uintptr_t)CPG_MHU_MSTOP,				0x00010001 },
+-	{ (uintptr_t)CPG_BUS_PERI_VIDEO2_MSTOP, 0x00010001 },
+-	{ (uintptr_t)CPG_PWRDN_MSTOP,			0x00010001 },
++#if PLAT_SYSTEM_SUSPEND_awo
++static const cpg_reg_setting_t cpg_s2r_mstop_tbl[] = {
++
++			/* I2C Ch0 + SCIF ch0 */
++	{ (uintptr_t)CPG_BUS_MCPU2_MSTOP,	0x04020000 },
+ };
+ #endif
+ 
+@@ -176,7 +171,7 @@ static const cpg_setup_data_t cpg_m33_clkrst_tbl[] = {
+ 	{		/* CM33 */
+ 		(uintptr_t)CPG_CLKON_CM33,
+ 		(uintptr_t)CPG_CLKMON_CM33,
+-		0x00010001,
++		0x00030003,
+ 		CPG_T_CLK
+ 	},
+ 	{		/* CM33 */
+@@ -279,14 +274,6 @@ static const cpg_setup_data_t cpg_iso_reset_tbl[] = {
+ };
+ 
+ static const cpg_setup_data_t cpg_awo_clock_tbl[] = {
+-#if PLAT_M33_BOOT_SUPPORT
+-	{		/* CM33 */
+-		(uintptr_t)CPG_CLKON_CM33,
+-		(uintptr_t)CPG_CLKMON_CM33,
+-		0x03030000,
+-		CPG_T_CLK
+-	},
+-#endif /* PLAT_M33_BOOT_SUPPORT */
+ 	{
+ 			/* IA55 */
+ 		(uintptr_t)CPG_CLKON_IA55,
+@@ -321,14 +308,6 @@ static const cpg_setup_data_t cpg_awo_clock_tbl[] = {
+ };
+ 
+ static const cpg_setup_data_t cpg_awo_reset_tbl[] = {
+-#if PLAT_M33_BOOT_SUPPORT
+-	{		/* CM33 */
+-		(uintptr_t)CPG_RST_CM33,
+-		(uintptr_t)CPG_RSTMON_CM33,
+-		0x07070000,
+-		CPG_T_RST
+-	},
+-#endif /* PLAT_M33_BOOT_SUPPORT */
+ 	{		/* IA55 */
+ 		(uintptr_t)CPG_RST_IA55,
+ 		(uintptr_t)CPG_RSTMON_IA55,
+@@ -539,6 +518,9 @@ void cpg_early_setup(void)
+ {
+ 	cpg_div_setup(cpg_early_div_tbl, ARRAY_SIZE(cpg_early_div_tbl));
+ 	cpg_clkrst_start(cpg_early_clkrst_tbl, ARRAY_SIZE(cpg_early_clkrst_tbl));
++#if PLAT_SYSTEM_SUSPEND_awo
++	cpg_module_start(cpg_s2r_mstop_tbl,  ARRAY_SIZE(cpg_s2r_mstop_tbl));
++#endif
+ }
+ 
+ #if PLAT_SYSTEM_SUSPEND_vbat
+@@ -603,9 +585,9 @@ void cpg_active_ddr2(void)
+ void cpg_resume_setup(void)
+ {
+ #if defined(PLAT_SYSTEM_SUSPEND_awo)
+-	cpg_clkrst_start(cpg_iso_reset_tbl, ARRAY_SIZE(cpg_iso_reset_tbl));
+-	cpg_clkrst_start(cpg_iso_clock_tbl, ARRAY_SIZE(cpg_iso_clock_tbl));
+-	cpg_module_start(cpg_iso_mstop_tbl, ARRAY_SIZE(cpg_iso_mstop_tbl));
++	cpg_clock_on_setup();
++	cpg_div_sel_dynamic_setup();
++	cpg_module_start(cpg_s2r_mstop_tbl,  ARRAY_SIZE(cpg_s2r_mstop_tbl));
+ #endif
+ }
+ 
+diff --git a/plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c b/plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c
+index cd1736ed4..6124cf2c9 100644
+--- a/plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c
++++ b/plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c
+@@ -43,6 +43,12 @@ static void __dead2 pwrc_go_suspend_to_ram(void)
+ 	pwrc_board_suspend_on();
+ #endif
+ 
++#ifdef PLAT_SYSTEM_SUSPEND_awo
++	/* Trigger SYS_LPM_INT signal */
++	mmio_write_32(SYS_LP_CTL1, mmio_read_32(SYS_LP_CTL1) | 0x100);
++	mmio_write_32(SYS_LP_CTL5, mmio_read_32(SYS_LP_CTL5) | 0x100);
++#endif
++
+ 	mmio_write_32(SYS_LP_CTL2, CA55_STBYCTL_SLEEP_START);
+ 
+ 	while (1)
+diff --git a/plat/renesas/rz/soc/g3l/include/platform_def.h b/plat/renesas/rz/soc/g3l/include/platform_def.h
+index 00d74fe07..f3d3e53e8 100644
+--- a/plat/renesas/rz/soc/g3l/include/platform_def.h
++++ b/plat/renesas/rz/soc/g3l/include/platform_def.h
+@@ -45,10 +45,20 @@
+ /*******************************************************************************
+  * BL2 specific defines.
+  ******************************************************************************/
++#if (PLAT_BOOT_FROM_M33_SUPPORT == 1) /* CM33 Cold Boot */
++#define BL2_BASE					U(0x0005C000)
++#else /* PLAT_BOOT_FROM_M33_SUPPORT == 0 */
++#if (PLAT_M33_BOOT_SUPPORT == 1)
++/* TF-A boot CM33 firmware */
++#define BL2_PARAMS_BASE				U(0x0005AE00)
++#else
++/* Normal TF-A boot */
+ #define BL2_PARAMS_BASE				U(0x00021E00) /* Base address for parameters for BL2 */
++#endif
+ #define BL2_PARAMS_SIZE				U(0x00000200)
+ 
+ #define BL2_BASE					U(BL2_PARAMS_BASE + BL2_PARAMS_SIZE + 0x1000)
++#endif /* PLAT_BOOT_FROM_M33_SUPPORT == 1 */
+ #define BL2_LIMIT					U(BL2_BASE + 0x40000)
+ 
+ /*******************************************************************************
+@@ -57,8 +67,8 @@
+ #define PARAMS_BASE					(BL2_LIMIT) /* Base address for parameters for BL31 */
+ #define PARAMS_SIZE					UL(0x00001000)
+ 
+-#define BL31_SRAM_BASE				U(PARAMS_BASE + PARAMS_SIZE)
+-#define BL31_SRAM_LIMIT				U(BL31_SRAM_BASE + 0x3000)
++#define BL31_SRAM_BASE					(PARAMS_BASE + PARAMS_SIZE)
++#define BL31_SRAM_LIMIT					(BL31_SRAM_BASE + U(0x3000))
+ 
+ #define BL31_BASE					U(0x44000000)
+ #define BL31_LIMIT					U(0x44040000)
+@@ -87,9 +97,8 @@
+  * BL22 (Cortex-M33)
+  ******************************************************************************/
+ #if PLAT_M33_BOOT_SUPPORT
+-/* TODO: move these values to MCPU SRAM*/
+-#define BL22_BASE					U(0x70000)
+-#define BL22_LIMIT					U(0x80000)
++#define BL22_BASE					U(0x20000)
++#define BL22_LIMIT					U(0x5A000)
+ #endif /* PLAT_M33_BOOT_SUPPORT */
+ 
+ /*******************************************************************************
+diff --git a/plat/renesas/rz/soc/g3l/platform.mk b/plat/renesas/rz/soc/g3l/platform.mk
+index 7848f1909..8bbc5342d 100644
+--- a/plat/renesas/rz/soc/g3l/platform.mk
++++ b/plat/renesas/rz/soc/g3l/platform.mk
+@@ -55,6 +55,10 @@ ifneq (${TRUSTED_BOARD_BOOT},0)
+ 	endif
+ endif
+ 
++BL2_SRAM_BASE := 0x00023000
++ifneq ($(filter 1,${PLAT_M33_BOOT_SUPPORT} ${PLAT_BOOT_FROM_M33_SUPPORT}),)
++BL2_SRAM_BASE := 0x0005C000
++endif
+ 
+ .PHONY: bptool_make bptool_clean
+ 
+@@ -69,8 +73,8 @@ bptool_make:
+ bptool_clean:
+ 	${Q}${MAKE} --no-print-directory -C ${BPTOOLPATH} clean
+ 
+-pkg:
+-	./tools/renesas/bptool build/g3l/${BUILD_TYPE}/bl2.bin build/g3l/${BUILD_TYPE}/bp_spi.bin 0x00023000 spi
++pkg: bl2 fip
++	./tools/renesas/bptool build/g3l/${BUILD_TYPE}/bl2.bin build/g3l/${BUILD_TYPE}/bp_spi.bin ${BL2_SRAM_BASE} spi
+ 	cat build/g3l/${BUILD_TYPE}/bp_spi.bin build/g3l/${BUILD_TYPE}/bl2.bin > build/g3l/${BUILD_TYPE}/bl2_bp_spi.bin
+ 	objcopy -I binary -O srec --adjust-vma=0x21E00 --srec-forceS3 build/g3l/${BUILD_TYPE}/bl2_bp_spi.bin  build/g3l/${BUILD_TYPE}/bl2_bp_spi.srec
+ 	./tools/renesas/bptool build/g3l/${BUILD_TYPE}/bl2.bin build/g3l/${BUILD_TYPE}/bp_mmc.bin 0x00023000 mmc
+-- 
+2.43.0
+

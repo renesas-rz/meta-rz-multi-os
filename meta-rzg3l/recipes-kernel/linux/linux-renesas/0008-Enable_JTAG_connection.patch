@@ -1,0 +1,82 @@
+diff --git a/arch/arm64/boot/dts/renesas/r9a08g046l48-smarc.dts b/arch/arm64/boot/dts/renesas/r9a08g046l48-smarc.dts
+index 9636e1adb225..b2e2ed85017b 100644
+--- a/arch/arm64/boot/dts/renesas/r9a08g046l48-smarc.dts
++++ b/arch/arm64/boot/dts/renesas/r9a08g046l48-smarc.dts
+@@ -48,6 +48,13 @@
+  */
+ #define SPDIF_SEL		0
+ 
++/*
++ * Enable JTAG support
++ *		0: Disable
++ *		1: Enable
++*/
++#define JTAG_SUPPORT		1
++
+ #include <dt-bindings/gpio/gpio.h>
+ #include <dt-bindings/pinctrl/renesas,r9a08g046-pinctrl.h>
+ 
+@@ -161,6 +168,7 @@ vspm_if {
+ 		compatible = "renesas,vspm_if";
+ 	};
+ 
++#if (!JTAG_SUPPORT)
+ #if (!SW_SDIO_M2E)
+ 	vqmmc_sd1_pvdd: regulator-vqmmc-sd1-pvdd {
+ 		compatible = "regulator-gpio";
+@@ -179,6 +187,7 @@ vqmmc-wifi-pvdd {
+ 		output-high;
+ 		line-name = "wifi1.8";
+ 	};
++#endif
+ #endif
+ 
+ 	clk_ext_camera: clk_ext_camera {
+@@ -339,6 +348,7 @@ scif0_pins: scif0 {
+ 		power-source = <1800>;
+ 	};
+ 
++#if (!JTAG_SUPPORT)
+ #if (!SW_SDIO_M2E)
+ 	sd1-pwr-en-hog {
+ 		gpio-hog;
+@@ -346,6 +356,7 @@ sd1-pwr-en-hog {
+ 		output-high;
+ 		line-name = "sd1_pwr_en";
+ 	};
++#endif
+ #endif
+ 
+ 	sdhi1_pins: sd1 {
+@@ -675,6 +686,7 @@ &scif0 {
+ 	status = "okay";
+ };
+ 
++#if (!JTAG_SUPPORT)
+ #if (!SW_SDIO_M2E)
+ &sdhi1 {
+ 	pinctrl-0 = <&sdhi1_pins>;
+@@ -707,6 +719,7 @@ brcmf: bcrmf@1 {
+ 	};
+ };
+ #endif
++#endif
+ 
+ &phyrst {
+ 	status = "okay";
+@@ -784,6 +797,7 @@ csi2_in: endpoint {
+ 	};
+ };
+ 
++#if (!JTAG_SUPPORT)
+ #if (!SW_DPI_EN && !MTU3_SUPPORT)
+ &gpt {
+ 	pinctrl-0 = <&gpt_pins>;
+@@ -798,6 +812,7 @@ &poegd {
+ 	status = "okay";
+ };
+ #endif
++#endif
+ 
+ &i2c1 {
+ 	pinctrl-0 = <&i2c1_pins>;

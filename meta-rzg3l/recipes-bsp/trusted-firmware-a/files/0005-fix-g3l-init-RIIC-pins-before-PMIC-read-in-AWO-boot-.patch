@@ -1,0 +1,28 @@
+From 0a13adbf5f916325c7b8616a901ee67890aa8662 Mon Sep 17 00:00:00 2001
+From: Chen Tao <tao.chen.xc@renesas.com>
+Date: Thu, 6 Aug 2026 10:21:39 +0900
+Subject: [PATCH 5/5] fix(g3l): init RIIC pins before PMIC read in AWO boot
+ path
+
+---
+ plat/renesas/rz/soc/g3l/bl2_plat_setup.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/plat/renesas/rz/soc/g3l/bl2_plat_setup.c b/plat/renesas/rz/soc/g3l/bl2_plat_setup.c
+index 621cd3187..3bd73cee3 100644
+--- a/plat/renesas/rz/soc/g3l/bl2_plat_setup.c
++++ b/plat/renesas/rz/soc/g3l/bl2_plat_setup.c
+@@ -107,6 +107,10 @@ void bl2_el3_early_platform_setup(u_register_t arg1, u_register_t arg2,
+ {
+ 	/* early setup Clock and Reset */
+ 	cpg_early_setup();
++#if defined(PLAT_SYSTEM_SUSPEND_awo)
++	/* I2C pins must be ready before sys_is_resume_peripheral() reads the PMIC */
++	pfc_riic_pmic_setup();
++#endif
+ 
+ 	if (!sys_is_resume_peripheral()) {
+ 		/* initialize SYC */
+-- 
+2.43.0
+

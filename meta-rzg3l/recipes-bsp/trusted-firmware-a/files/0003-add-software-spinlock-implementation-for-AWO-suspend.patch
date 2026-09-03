@@ -1,0 +1,272 @@
+From f54322fc796e60f55f67e2a3f23e71024e1a60ff Mon Sep 17 00:00:00 2001
+From: Chen Tao <tao.chen.xc@renesas.com>
+Date: Tue, 2 Jun 2026 14:20:23 +0900
+Subject: [PATCH 3/5] add software spinlock implementation for AWO
+ suspend-to-RAM support
+
+---
+ plat/renesas/rz/common/aarch64/sw_spinlock.S | 57 ++++++++++++++++++++
+ plat/renesas/rz/common/g3l_common.mk         |  9 ++++
+ plat/renesas/rz/common/include/sw_spinlock.h | 36 +++++++++++++
+ plat/renesas/rz/soc/g3l/drivers/core_ctrl.c  |  5 ++
+ plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c  | 10 ++++
+ plat/renesas/rz/soc/g3l/include/plat.ld.S    |  1 +
+ plat/renesas/rz/soc/g3l/plat_pm.c            |  3 +-
+ plat/renesas/rz/soc/g3l/platform.mk          |  1 +
+ 8 files changed, 121 insertions(+), 1 deletion(-)
+ create mode 100644 plat/renesas/rz/common/aarch64/sw_spinlock.S
+ create mode 100644 plat/renesas/rz/common/include/sw_spinlock.h
+
+diff --git a/plat/renesas/rz/common/aarch64/sw_spinlock.S b/plat/renesas/rz/common/aarch64/sw_spinlock.S
+new file mode 100644
+index 000000000..02bd9ded8
+--- /dev/null
++++ b/plat/renesas/rz/common/aarch64/sw_spinlock.S
+@@ -0,0 +1,57 @@
++/*
++ * Copyright (c) 2026, Renesas Electronics Corporation. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <asm_macros.S>
++
++	.globl	sw_spin_lock
++	.globl	sw_spin_unlock
++
++/*
++ * Software spinlock implementation for Peterson's algorithm
++ *
++ * The spinlock structure is defined as follows:
++ *
++ * struct sw_spinlock {
++ *     volatile uint32_t flag_me	// offset 0
++ *     volatile uint32_t flag_other;	// offset 4
++ *     volatile uint32_t turn;		// offset 8
++ * };
++ *
++ * The core using this implementation sets flag_me to indicate interest
++ * in acquiring the lock.
++ * The other sets flag_other.
++ * The turn variable indicates whose turn it is to acquire the lock
++ * when both are interested.
++ *
++ * Note: This implementation only works correctly on 2 candidates.
++ *
++ * void sw_spinlock(struct sw_spinlock *lock);
++ * void sw_spinunlock(struct sw_spinlock *lock);
++ */
++func sw_spin_lock
++	mov     w1, #1
++	str     w1, [x0, #0]        /* flag_me = 1 */
++	dmb     sy
++	mov     w1, #1
++	str     w1, [x0, #8]        /* turn = 1 (give other processor priority) */
++	dmb     sy
++1:
++	ldr     w1, [x0, #4]        /* load flag_other */
++	cbz     w1, 2f              /* if the other processor's flag==0, got the lock */
++	ldr     w2, [x0, #8]        /* load turn */
++	cmp     w2, #1
++	b.eq    1b                  /* if turn==1 and the other processor wants the lock, spin */
++2:
++	dmb     sy
++	ret
++endfunc sw_spin_lock
++
++func sw_spin_unlock
++	dmb     sy
++	str     wzr, [x0, #0]       /* flag_me = 0 */
++	dmb     sy
++	ret
++endfunc sw_spin_unlock
+diff --git a/plat/renesas/rz/common/g3l_common.mk b/plat/renesas/rz/common/g3l_common.mk
+index 90f186d77..5ed286a7d 100644
+--- a/plat/renesas/rz/common/g3l_common.mk
++++ b/plat/renesas/rz/common/g3l_common.mk
+@@ -21,6 +21,7 @@ TRUSTED_BOARD_BOOT				:= 0
+ PROTECTED_CHIPID				:= 1
+ SECURE_RTC						:= 0
+ INIT_UNUSED_NS_EL2				:= 1
++PLAT_USE_SW_SPIN_LOCK				:= 0
+ 
+ # This option gets enabled automatically if the TRUSTED_BOARD_BOOT
+ # is set via root Makefile, but Renesas support Trusted-Boot without
+@@ -37,6 +38,13 @@ $(error Unknown suspend mode ${PLAT_SYSTEM_SUSPEND})
+ endif
+ endif
+ 
++ifeq (${PLAT_M33_BOOT_SUPPORT}, 1)
++override PLAT_USE_SW_SPIN_LOCK	:= 1
++endif
++ifeq (${PLAT_BOOT_FROM_M33_SUPPORT}, 1)
++override PLAT_USE_SW_SPIN_LOCK	:= 1
++endif
++
+ ifeq (${PLAT_M33_BOOT_SUPPORT}, 1)
+ ifneq (${PLAT_BOOT_FROM_M33_SUPPORT}, 0)
+ $(error cannot enable both PLAT_BOOT_FROM_M33_SUPPORT and PLAT_M33_BOOT_SUPPORT)
+@@ -59,6 +67,7 @@ $(eval $(call add_define,PLAT_M33_BOOT_SUPPORT))
+ $(eval $(call add_define,PLAT_SYSTEM_SUSPEND))
+ $(eval $(call add_define,PLAT_BOOT_FROM_M33_SUPPORT))
+ $(eval $(call add_define,PLAT_SYSTEM_SUSPEND_${PLAT_SUSPEND_MODE}))
++$(eval $(call add_define,PLAT_USE_SW_SPIN_LOCK))
+ $(eval $(call add_define,PLAT_EMMC_WRITE_ENABLE))
+ # Enable workarounds for selected Cortex-A55 erratas.
+ ERRATA_A55_768277				:= 1
+diff --git a/plat/renesas/rz/common/include/sw_spinlock.h b/plat/renesas/rz/common/include/sw_spinlock.h
+new file mode 100644
+index 000000000..55c56b1f4
+--- /dev/null
++++ b/plat/renesas/rz/common/include/sw_spinlock.h
+@@ -0,0 +1,36 @@
++/*
++ * Copyright (c) 2026, Renesas Electronics Corporation. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++#ifndef SW_SPINLOCK_H
++#define SW_SPINLOCK_H
++
++#include <stdint.h>
++
++typedef struct {
++	volatile uint32_t flag_me;	// offset 0
++	volatile uint32_t flag_other;	// offset 4
++	volatile uint32_t turn;		// offset 8
++} sw_spinlock_t;
++
++void sw_spin_lock(sw_spinlock_t *lock);
++void sw_spin_unlock(sw_spinlock_t *lock);
++
++extern sw_spinlock_t * const sw_shared_lock;
++#define PLAT_DEFINE_SHARED_LOCK(mem)	sw_spinlock_t * const sw_shared_lock = (sw_spinlock_t *)(mem)
++static inline void plat_sw_spin_lock()
++{
++#if PLAT_USE_SW_SPIN_LOCK
++	sw_spin_lock(sw_shared_lock);
++#endif
++}
++
++static inline void plat_sw_spin_unlock()
++{
++#if PLAT_USE_SW_SPIN_LOCK
++	sw_spin_unlock(sw_shared_lock);
++#endif
++}
++
++#endif /* SW_SPINLOCK_H */
+diff --git a/plat/renesas/rz/soc/g3l/drivers/core_ctrl.c b/plat/renesas/rz/soc/g3l/drivers/core_ctrl.c
+index 0fd3acf6d..2b1d6b7b4 100644
+--- a/plat/renesas/rz/soc/g3l/drivers/core_ctrl.c
++++ b/plat/renesas/rz/soc/g3l/drivers/core_ctrl.c
+@@ -13,6 +13,7 @@
+ #include <lib/utils_def.h>
+ #include <sys_regs.h>
+ #include <common/debug.h>
++#include <sw_spinlock.h>
+ 
+ /* External Reset Application */
+ #define NUM_STEPS_APPLY_EXT_WARM_RST		(7)
+@@ -139,9 +140,11 @@ static void perform_control_sequence(const reset_steps_t reset_seq[], uint8_t nu
+ 
+ void core_ctrl_set_in_standby(uint32_t coreid)
+ {
++	plat_sw_spin_lock();
+ 	/* Request transition to Cortex-A55 CoreX Sleep Mode */
+ 	mmio_write_32(SYS_LP_CTL1, mmio_read_32(SYS_LP_CTL1) | (SYS_LP_CTL1_CA55SLEEP_REQ << coreid));
+ 	dsb();
++	plat_sw_spin_unlock();
+ 
+ 	/* Enter the Cortex-A55 Sleep Mode */
+ 	mmio_write_32(SYS_LP_CTL2, mmio_read_32(SYS_LP_CTL2) | SYS_LP_CTL2_CA55_STBYCTL);
+@@ -153,7 +156,9 @@ void core_ctrl_warm_boot(uint32_t coreid)
+ 	/* If in standby, then clear standby mode. */
+ 	if ((mmio_read_32(SYS_LP_CTL1) & (SYS_LP_CTL1_CA55SLEEP_ACK << coreid)) != 0) {
+ 		/* Clear CA55SLEEP_REQ and CA55SLEEP_ACK */
++		plat_sw_spin_lock();
+ 		mmio_write_32(SYS_LP_CTL1, mmio_read_32(SYS_LP_CTL1) & ~((SYS_LP_CTL1_CA55SLEEP_ACK | SYS_LP_CTL1_CA55SLEEP_REQ) << coreid));
++		plat_sw_spin_unlock();
+ 	}
+ 
+ 	/* if no cores are asleep, then clear the stby bit */
+diff --git a/plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c b/plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c
+index 6124cf2c9..bd394a4e3 100644
+--- a/plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c
++++ b/plat/renesas/rz/soc/g3l/drivers/pwrc/pwrc.c
+@@ -22,9 +22,17 @@
+ #include <rz_private.h>
+ #include <pwrc_board.h>
+ #include <vbatt_regs.h>
++#include <sw_spinlock.h>
+ 
+ extern void pwrc_func_call_with_pmustack(uintptr_t jump, void *arg);
+ 
++#if PLAT_USE_SW_SPIN_LOCK
++/* spin lock shared between CA55 and CM33
++ * it will use SYS_GPREG_1, SYS_GPREG_2, SYS_GPREG_3 registers to hold the lock struct
++ */
++PLAT_DEFINE_SHARED_LOCK(SYS_GPREG_1);
++#endif
++
+ static void __dead2 pwrc_go_suspend_to_ram(void)
+ {
+ 	/*
+@@ -45,7 +53,9 @@ static void __dead2 pwrc_go_suspend_to_ram(void)
+ 
+ #ifdef PLAT_SYSTEM_SUSPEND_awo
+ 	/* Trigger SYS_LPM_INT signal */
++	plat_sw_spin_lock();
+ 	mmio_write_32(SYS_LP_CTL1, mmio_read_32(SYS_LP_CTL1) | 0x100);
++	plat_sw_spin_unlock();
+ 	mmio_write_32(SYS_LP_CTL5, mmio_read_32(SYS_LP_CTL5) | 0x100);
+ #endif
+ 
+diff --git a/plat/renesas/rz/soc/g3l/include/plat.ld.S b/plat/renesas/rz/soc/g3l/include/plat.ld.S
+index 0918b57a3..56ca547cc 100644
+--- a/plat/renesas/rz/soc/g3l/include/plat.ld.S
++++ b/plat/renesas/rz/soc/g3l/include/plat.ld.S
+@@ -33,6 +33,7 @@ SECTIONS
+ 		*/pwrc*.o (.text* .rodata* .data* .bss*)
+ 		*/riic*.o (.text* .rodata* .data* .bss*)
+ 		*/cpg*.o (.text* .rodata* .data* .bss*)
++		*/sw_spinlock.o (.text* .rodata* .data* .bss*)
+ 		. = ALIGN(PAGE_SIZE);
+ 		__BL31_PMUSRAM_END__ = .;
+ 	} >SRAM AT>DRAM
+diff --git a/plat/renesas/rz/soc/g3l/plat_pm.c b/plat/renesas/rz/soc/g3l/plat_pm.c
+index ead1fb396..2854e3ac3 100644
+--- a/plat/renesas/rz/soc/g3l/plat_pm.c
++++ b/plat/renesas/rz/soc/g3l/plat_pm.c
+@@ -24,6 +24,7 @@
+ #include <pfc.h>
+ #include <rz_console.h>
+ #include <core_ctrl.h>
++#include <lib/spinlock.h>
+ 
+ #define LO_REG							(0U)
+ #define HI_REG							(1U)
+@@ -135,7 +136,7 @@ static void rz_pwr_domain_suspend(const psci_power_state_t *target_state)
+ 	plat_gic_save();
+ 
+ 	/* Enable the transition request interrupt to the Cortex-A55 Sleep Mode */
+-	mmio_write_32(SYS_LP_CTL6, 0x00000100);
++	mmio_write_32(SYS_LP_CTL6, mmio_read_32(SYS_LP_CTL6) | 0x00000100);
+ }
+ 
+ static void rz_pwr_domain_suspend_finish(const psci_power_state_t *target_state)
+diff --git a/plat/renesas/rz/soc/g3l/platform.mk b/plat/renesas/rz/soc/g3l/platform.mk
+index 8bbc5342d..9e176282a 100644
+--- a/plat/renesas/rz/soc/g3l/platform.mk
++++ b/plat/renesas/rz/soc/g3l/platform.mk
+@@ -23,6 +23,7 @@ PLAT_BL_COMMON_SOURCES	+=	plat/renesas/rz/soc/g3l/drivers/riic.c					\
+ 							plat/renesas/rz/soc/g3l/drivers/pfc.c					\
+ 							plat/renesas/rz/soc/g3l/drivers/rz_console.c			\
+ 							plat/renesas/rz/soc/g3l/plat_security.c					\
++							plat/renesas/rz/common/aarch64/sw_spinlock.S				\
+ 							${DDR_SOURCES}
+ 
+ BL2_SOURCES				+=	plat/renesas/rz/soc/g3l/bl2_plat_setup.c				\
+-- 
+2.43.0
+

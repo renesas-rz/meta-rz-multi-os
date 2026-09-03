@@ -1,0 +1,97 @@
+diff --git a/arch/arm/dts/smarc-rzg3l.dts b/arch/arm/dts/smarc-rzg3l.dts
+index d76d03b..b0ef0a9 100644
+--- a/arch/arm/dts/smarc-rzg3l.dts
++++ b/arch/arm/dts/smarc-rzg3l.dts
+@@ -50,6 +50,11 @@
+ 	status = "okay";
+ };
+
++&sdhi2 {
++	bus-width = <4>;
++	status = "okay";
++};
++
+ &eth0 {
+ 	status = "okay";
+ 	phy-handle = <&phy0>;
+diff --git a/board/renesas/rzg3l-dev/rzg3l-dev.c b/board/renesas/rzg3l-dev/rzg3l-dev.c
+index 2d6b627..4b28873 100644
+--- a/board/renesas/rzg3l-dev/rzg3l-dev.c
++++ b/board/renesas/rzg3l-dev/rzg3l-dev.c
+@@ -116,6 +116,10 @@ struct efi_capsule_update_info update_info = {
+ #define	PFC_PM33			(PFC_BASE + 0x0166)
+ #define	PFC_PMC33			(PFC_BASE + 0x0233)
+
++#define	PFC_P34				(PFC_BASE + 0x34)
++#define	PFC_PM34			(PFC_BASE + 0x0168)
++#define	PFC_PMC34			(PFC_BASE + 0x0234)
++
+ #define	PFC_P35				(PFC_BASE + 0x35)
+ #define	PFC_PM35			(PFC_BASE + 0x016A)
+ #define	PFC_PMC35			(PFC_BASE + 0x0235)
+@@ -124,6 +128,8 @@ struct efi_capsule_update_info update_info = {
+ #define	PFC_IOLH_34_L			(PFC_BASE + 0x11A0)
+ #define	PFC_IEN_30_L		(PFC_BASE + 0x1980)
+ #define	PFC_IEN_30_H		(PFC_BASE + 0x1984)
++#define	PFC_IEN_31_L		(PFC_BASE + 0x1988)
++#define	PFC_IEN_31_H		(PFC_BASE + 0x198C)
+ #define	PFC_IEN_34			(PFC_BASE + 0x19A0)
+ #define	PFC_IEN_23			(PFC_BASE + 0x1918)
+ #define	PFC_IEN_24			(PFC_BASE + 0x1920)
+@@ -155,6 +161,11 @@ struct efi_capsule_update_info update_info = {
+ #define SYSC_BASE			0x11020000
+ #define SYS_IPCONT_SEL_CLONECH		(SYSC_BASE + 0x0E2C)
+
++#define PFC_PFC31			(PFC_BASE + 0x4C4)
++#define PFC_PFC34			(PFC_BASE + 0x4D0)
++
++#define PFC_SD_CH2_POC			(PFC_BASE + 0x3028)
++
+ #define PFC_PWPR			(PFC_BASE + 0x3000)
+ #define PWPR_B0WI			BIT(7)	 /* Bit Write Disable */
+ #define PWPR_PFCWE			BIT(6)	/* PFC Register Write Enable */
+@@ -184,6 +195,10 @@ void s_init(void)
+ 	*(volatile u32 *)(PFC_PFC30) = (*(volatile u32 *)(PFC_PFC30) & 0xFF000000) | 0x111111;
+ 	*(volatile u8 *)(PFC_PMC30) |= 0x3F;	/* PG0-PG5 function	*/
+
++	/* PH0-PH5 function 1	*/
++	*(volatile u32 *)(PFC_PFC31) = (*(volatile u32 *)(PFC_PFC31) & 0xFF000000) | 0x111111;
++	*(volatile u8 *)(PFC_PMC31) |= 0x3F;	/* PH0-PH5 function	*/
++
+ #if CONFIG_TARGET_SMARC_RZG3L
+ 	if ((*(volatile u32 *)(SYS_LSI_MODE) & SYS_STAT_DEBUGEN_MASK) == 0) {
+ 		/* PJ1 = 0 QSD1_IOVS=0	*/
+@@ -196,6 +211,23 @@ void s_init(void)
+ 		*(volatile u16 *)(PFC_PM33) = (*(volatile u16 *)(PFC_PM33) & 0xFF) | 0x20; /*bit[5:4]='B10	*/
+ 		*(volatile u8 *)(PFC_P33) |= 0x04;
+ 	}
++
++	*(volatile u32 *)(PFC_SD_CH2_POC) = 0;
++	*(volatile u32 *)(PFC_PFC34) = 0x00000001;
++
++	/* PK2 = 1 QSD1_PWEN=0	*/
++	*(volatile u8 *)(PFC_PMC34) &= ~(0x04);
++	*(volatile u16 *)(PFC_PM34) = (*(volatile u16 *)(PFC_PM34) & 0xFFCF) | 0x20; /*bit[5:4]='B10	*/
++	*(volatile u8 *)(PFC_P34) &= ~(0x04);
++	/* PK1 = 0 QSD1_IOVS=0	*/
++	*(volatile u8 *)(PFC_PMC34) &= ~(0x02);
++	*(volatile u16 *)(PFC_PM34) = (*(volatile u16 *)(PFC_PM34) & 0xFFF3) | 0x08; /*bit[3:2]='B10	*/
++	*(volatile u8 *)(PFC_P34) &= ~(0x02);
++
++	/* PK2 = 1 QSD1_PWEN=1	*/
++	*(volatile u8 *)(PFC_PMC34) &= ~(0x04);
++	*(volatile u16 *)(PFC_PM34) = (*(volatile u16 *)(PFC_PM34) & 0xFFCF) | 0x20; /*bit[5:4]='B10	*/
++	*(volatile u8 *)(PFC_P34) |= 0x04;
+ #else
+ 	/* P56 = 1 QSD1_PWEN=1	*/
+ 	*(volatile u8 *)(PFC_PMC25) &= ~(0x40);
+@@ -207,6 +239,9 @@ void s_init(void)
+ 	*(volatile u32 *)(PFC_IEN_30_L) = 0x01010101;
+ 	*(volatile u32 *)(PFC_IEN_30_H) = 0x00000101;
+
++	*(volatile u32 *)(PFC_IEN_31_L) = 0x01010100;
++	*(volatile u32 *)(PFC_IEN_31_H) = 0x00000101;
++
+ 	//g3l
+ 	/* Pinmux for ETH0 */
+ 	*(volatile u32 *)(PFC_PFC2A) = 0x00001111;

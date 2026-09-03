@@ -1,0 +1,180 @@
+From 4697ea9f5a3e42860b9d13938c07dd641f83e7bd Mon Sep 17 00:00:00 2001
+From: Trung Le <trung.le.uj@renesas.com>
+Date: Fri, 31 Jul 2026 17:05:35 +0700
+Subject: [PATCH 4/5] simplify riic for pmic usage
+
+---
+ plat/renesas/rz/board/g3l_smarc/pwrc_board.c |  3 +-
+ plat/renesas/rz/soc/g3l/bl2_plat_setup.c     |  2 +-
+ plat/renesas/rz/soc/g3l/drivers/pfc.c        | 29 +++++++++++++-------
+ plat/renesas/rz/soc/g3l/drivers/riic.c       |  1 -
+ plat/renesas/rz/soc/g3l/include/pfc.h        |  1 -
+ plat/renesas/rz/soc/g3l/plat_ddr_setup.c     |  3 --
+ 6 files changed, 21 insertions(+), 18 deletions(-)
+
+diff --git a/plat/renesas/rz/board/g3l_smarc/pwrc_board.c b/plat/renesas/rz/board/g3l_smarc/pwrc_board.c
+index 85a8fdd30..3f3390da5 100644
+--- a/plat/renesas/rz/board/g3l_smarc/pwrc_board.c
++++ b/plat/renesas/rz/board/g3l_smarc/pwrc_board.c
+@@ -67,7 +67,7 @@ bool pwrc_board_is_resume(void)
+ 		return is_warm_boot;
+ 
+ 	uint8_t gpak_data = 0;
+-	pfc_riic_pmic_setup();
++
+ 	riic_setup();
+ 	riic_read(GP_ADDRESS, GP_SR_ADDR, &gpak_data);
+ 
+@@ -81,7 +81,6 @@ bool pwrc_board_is_resume(void)
+ 
+ void pwrc_clear_resume_flag(void)
+ {
+-	pfc_riic_pmic_setup();
+ 	riic_setup();
+ 
+ 	riic_write(GP_ADDRESS, GP_SHSC_ADDR, SLP_HIST_STS_CLEAR);
+diff --git a/plat/renesas/rz/soc/g3l/bl2_plat_setup.c b/plat/renesas/rz/soc/g3l/bl2_plat_setup.c
+index 87c07b90e..621cd3187 100644
+--- a/plat/renesas/rz/soc/g3l/bl2_plat_setup.c
++++ b/plat/renesas/rz/soc/g3l/bl2_plat_setup.c
+@@ -60,7 +60,7 @@ int bl2_plat_handle_pre_image_load(unsigned int image_id)
+ 
+ 	/* Clean next_params_info in BL image node */
+ 	bl_mem_params->params_node_mem.next_params_info = NULL;
+-	pfc_xspi_setup();
++
+ 	return 0;
+ }
+ 
+diff --git a/plat/renesas/rz/soc/g3l/drivers/pfc.c b/plat/renesas/rz/soc/g3l/drivers/pfc.c
+index 3f947886c..fb71d0647 100644
+--- a/plat/renesas/rz/soc/g3l/drivers/pfc.c
++++ b/plat/renesas/rz/soc/g3l/drivers/pfc.c
+@@ -11,6 +11,9 @@
+ #include <sys.h>
+ #include <lib/mmio.h>
+ 
++#define RIIC_PFC_PMC_MASK	(0x0C)
++#define RIIC_PFC_PFC_MASK	(0x0000FF00)
++
+ static const pfc_regs_t pfc_sd_reg_tbl[PFC_SD_TBL_NUM] = {
+ 	/* SD0_CLK (P09.0), SD0_CMD (P09.1), SD0_RSTN (P09.2), SD0_DS (P09.5) */
+ 	{
+@@ -42,22 +45,21 @@ static const pfc_regs_t pfc_scif_reg_tbl[PFC_SCIF_TBL_NUM] = {
+ };
+ 
+ static const pfc_regs_t  pfc_xspi_reg_tbl[PFC_XSPI_TBL_NUM] = {
+-	/* XSPI_CKP (P35.0), XSPI_CS0 (P35.1), XSPI_CS1 (P35.2), XSPI_DS (P35.3) */
++	/* XSPI_CKP (P35.0), XSPI_CS0 (P35.1) */
+ 	{
+-		{ PFC_ON,	(uintptr_t)PFC_PMC35,	0x0F },					/* PMC */
++		{ PFC_ON,	(uintptr_t)PFC_PMC35,	0x03 },					/* PMC */
+ 		{ PFC_ON,	(uintptr_t)PFC_PFC35,	0x0 },					/* PFC */
+-		{ PFC_ON,	(uintptr_t)PFC_IOLH35,	0x0000000003030303 },	/* IOLH */
++		{ PFC_ON,	(uintptr_t)PFC_IOLH35,	0x0000000000000303 },	/* IOLH */
+ 		{ PFC_OFF,	(uintptr_t)NULL,		0 },					/* PUPD */
+ 		{ PFC_OFF,	(uintptr_t)NULL,		0 }						/* IEN */
+ 	},
+ 	/*
+-	 * XSPI_IO0 (P36.0),  XSPI_IO1 (P36.1),  XSPI_IO2 (P36.2), XSPI_IO3 (P36.3),
+-	 * XSPI_IO4 (P36.4),  XSPI_IO5 (P36.5),  XSPI_IO6 (P36.6),  XSPI_IO7 (P36.7)
++	 * XSPI_IO0 (P36.0),  XSPI_IO1 (P36.1),  XSPI_IO2 (P36.2), XSPI_IO3 (P36.3)
+ 	 */
+ 	{
+-		{ PFC_ON,	(uintptr_t)PFC_PMC36,	0xFF },					/* PMC */
++		{ PFC_ON,	(uintptr_t)PFC_PMC36,	0x0F },					/* PMC */
+ 		{ PFC_ON,	(uintptr_t)PFC_PFC36,	0x0 },					/* PFC */
+-		{ PFC_ON,	(uintptr_t)PFC_IOLH36,	0x0303030303030303 },	/* IOLH */
++		{ PFC_ON,	(uintptr_t)PFC_IOLH36,	0x0000000003030303 },	/* IOLH */
+ 		{ PFC_OFF,	(uintptr_t)NULL,		0 },					/* PUPD */
+ 		{ PFC_OFF,	(uintptr_t)NULL,		0 }						/* IEN */
+ 	}
+@@ -107,7 +109,7 @@ static void pfc_scif_setup(void)
+ 	pfc_write_registers(PFC_SCIF_TBL_NUM, pfc_scif_reg_tbl);
+ }
+ 
+-void pfc_xspi_setup(void)
++static void pfc_xspi_setup(void)
+ {
+ 	/* Set OEN of XSPI Multi/OctaRAM IO block. */
+ 	mmio_write_32(PFC_XSPI_OEN, XSPI_OEN_SORST_N);
+@@ -140,11 +142,15 @@ void pfc_riic_pmic_setup(void)
+ 	for (uint8_t cnt = 0; cnt < PFC_RIIC_TBL_NUM; cnt++) {
+ 		/* PFC */
+ 		if (pfc_i2c0_reg_tbl[cnt].pfc.flg == PFC_ON) {
+-			mmio_write_32(pfc_i2c0_reg_tbl[cnt].pfc.reg, pfc_i2c0_reg_tbl[cnt].pfc.val);
++			uint32_t reg_val = (mmio_read_32(pfc_i2c0_reg_tbl[cnt].pfc.reg) & ~RIIC_PFC_PFC_MASK) | pfc_i2c0_reg_tbl[cnt].pfc.val;
++
++			mmio_write_32(pfc_i2c0_reg_tbl[cnt].pfc.reg, reg_val);
+ 		}
+ 		/* PMC */
+ 		if (pfc_i2c0_reg_tbl[cnt].pmc.flg == PFC_ON) {
+-			mmio_write_8(pfc_i2c0_reg_tbl[cnt].pmc.reg, pfc_i2c0_reg_tbl[cnt].pmc.val);
++			uint8_t reg_val = (mmio_read_8(pfc_i2c0_reg_tbl[cnt].pmc.reg) & ~RIIC_PFC_PMC_MASK) | pfc_i2c0_reg_tbl[cnt].pmc.val;
++
++			mmio_write_8(pfc_i2c0_reg_tbl[cnt].pmc.reg, reg_val);
+ 		}
+ 	}
+ 
+@@ -196,5 +202,8 @@ void pfc_setup(void)
+ 	pfc_scif_setup();
+ 	pfc_xspi_setup();
+ 	pfc_sd_setup();
++#if PLAT_SYSTEM_SUSPEND
++	pfc_riic_pmic_setup();
++#endif
+ 	pfc_drive_setup();
+ }
+diff --git a/plat/renesas/rz/soc/g3l/drivers/riic.c b/plat/renesas/rz/soc/g3l/drivers/riic.c
+index 211c50886..782c1605c 100644
+--- a/plat/renesas/rz/soc/g3l/drivers/riic.c
++++ b/plat/renesas/rz/soc/g3l/drivers/riic.c
+@@ -11,7 +11,6 @@
+ #include <rz_soc_def.h>
+ #include <riic.h>
+ #include <riic_regs.h>
+-#include <pfc.h>
+ 
+ #define RIIC_SPEED_RATE			(100000)
+ #define RIIC_WAIT_COUNT_MAX		(40000000U)
+diff --git a/plat/renesas/rz/soc/g3l/include/pfc.h b/plat/renesas/rz/soc/g3l/include/pfc.h
+index 773b54351..723e192cf 100644
+--- a/plat/renesas/rz/soc/g3l/include/pfc.h
++++ b/plat/renesas/rz/soc/g3l/include/pfc.h
+@@ -8,7 +8,6 @@
+ #define __PFC_H__
+ 
+ void pfc_setup(void);
+-void pfc_xspi_setup(void);
+ void pfc_riic_pmic_setup(void);
+ 
+ #endif	/* __PFC_H__ */
+diff --git a/plat/renesas/rz/soc/g3l/plat_ddr_setup.c b/plat/renesas/rz/soc/g3l/plat_ddr_setup.c
+index d46fdb600..c1c2fc4ea 100644
+--- a/plat/renesas/rz/soc/g3l/plat_ddr_setup.c
++++ b/plat/renesas/rz/soc/g3l/plat_ddr_setup.c
+@@ -21,7 +21,6 @@
+ #include <sys.h>
+ #include <ddr.h>
+ #include <emmc_def.h>
+-#include <pfc.h>
+ 
+ uint32_t ddr_csr_table[RET_CSR_SIZE] __aligned(8);
+ 
+@@ -103,13 +102,11 @@ void plat_ddr_setup(void)
+ {
+ 	if (!sys_is_resume_reboot()) {
+ 		ddr_setup();
+-		pfc_xspi_setup();
+ 		if (save_ddr_config(DDR_CONFIG_ID, &ddr_config_info) != 0) {
+ 			ERROR("Failed to save DDR retention info.\n");
+ 			panic();
+ 		}
+ 	} else {
+-		pfc_xspi_setup();
+ 		if (load_auth_image(DDR_CONFIG_ID, &ddr_config_info) != 0) {
+ 			ERROR("Failed to load DDR retention info.\n");
+ 			panic();
+-- 
+2.43.0
+

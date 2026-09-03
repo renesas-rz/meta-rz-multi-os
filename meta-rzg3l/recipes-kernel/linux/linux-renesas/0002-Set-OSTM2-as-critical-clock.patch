@@ -1,0 +1,23 @@
+diff --git a/arch/arm64/boot/dts/renesas/rzg3l-smarc-multi-os.dtsi b/arch/arm64/boot/dts/renesas/rzg3l-smarc-multi-os.dtsi
+--- a/arch/arm64/boot/dts/renesas/rzg3l-smarc-multi-os.dtsi
++++ b/arch/arm64/boot/dts/renesas/rzg3l-smarc-multi-os.dtsi
+@@ -63,3 +63,7 @@
+         status = "okay";
+     };
+ };
++
++&ostm2 {
++	status = "disabled";
++};
+diff --git a/drivers/clk/renesas/r9a08g046-cpg.c b/drivers/clk/renesas/r9a08g046-cpg.c
+index 9d635ce5251f..fa7e600111b8 100644
+--- a/drivers/clk/renesas/r9a08g046-cpg.c
++++ b/drivers/clk/renesas/r9a08g046-cpg.c
+@@ -816,6 +816,7 @@
+ 	MOD_CLK_BASE + R9A08G046_VBAT_BCLK,
+ 	MOD_CLK_BASE + R9A08G046_GPIO_HCLK,
+ 	MOD_CLK_BASE + R9A08G046_WDT0_PCLK,
++	MOD_CLK_BASE + R9A08G046_OSTM2_PCLK,
+ 	MOD_CLK_BASE + R9A08G046_DMAC_ACLK,
+ };
+ 

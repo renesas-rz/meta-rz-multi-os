@@ -1,6 +1,6 @@
 # meta-rz-multi-os
 
-This Multi-OS feature package provides Linux BSP Plus support for the RZ Group of 64bit Arm-based MPUs from Renesas Electronics. The following boards and MPUs are currently supported:
+The meta-rz-multi-os repository provides the Multi-OS feature layer for Linux BSP Plus support for the RZ Group of 64bit Arm-based MPUs from Renesas Electronics. The following boards and MPUs are currently supported:
 
 - Board: RZ/G2L SMARC Evaluation Board Kit / MPU: R9A07G044L (RZ/G2L)
 - Board: RZ/G2LC SMARC Evaluation Board Kit / MPU: R9A07G044C (RZ/G2LC)
@@ -8,6 +8,8 @@ This Multi-OS feature package provides Linux BSP Plus support for the RZ Group o
 - Board: RZ/G3S SMARC Evaluation Board Kit / MPU: R9A08G045 (RZ/G3S)
 - Board: RZ/T2H Evaluation Board Kit / MPU: R9A09G077M44 (RZ/T2H)
 - Board: RZ/N2H Evaluation Board Kit / MPU: R9A09G087M44 (RZ/N2H)
+- Board: RZ/G3L SMARC Evaluation Board Kit / MPU: R9A08G046L46 (RZ/G3L)
+- Board: RZ/G3SE SMARC Evaluation Board Kit / MPU: R9A08G045SE6 (RZ/G3SE)
 
 More details about Linux BSP Plus at: [Renesas RZ Linux BSP Plus](https://renesas-rz.github.io/rz_linux_bsp_plus/)
 
@@ -16,12 +18,12 @@ More details about Linux BSP Plus at: [Renesas RZ Linux BSP Plus](https://renesa
 Assume that `$WORK` is the current working directory.
 
 Please refer to [How To Build Linux BSP Plus](https://renesas-rz.github.io/rz_linux_bsp_plus/) for the details of building Linux BSP Plus source code.
-To support RZ Linux BSP Plus for Kernel 6.12 v3.0, please check out BSP-PLUS-K6.12-V3.0 as following:
+To support RZ Linux BSP Plus for Kernel 6.12 v4.0, please check out BSP-PLUS-K6.12-V4.0 as following:
 ```bash
     $ cd $WORK # Ensure you are in your working directory
     $ git clone https://github.com/renesas-rz/meta-renesas
     $ cd meta-renesas
-    $ git checkout -b tmp BSP-PLUS-K6.12-V3.0
+    $ git checkout -b tmp BSP-PLUS-K6.12-V4.0
     $ cd ../
 ```
 (Optional) Regarding Graphics and Video Codecs packages, please download from [Renesas.com](https://www.renesas.com/) website.
@@ -43,6 +45,8 @@ To apply Multi-OS feature package, follow the steps below.
    | RZ/G3S       | rzg3s    |
    | RZ/T2H       | rzt2h    |
    | RZ/N2H       | rzn2h    |
+   | RZ/G3L       | rzg3l    |
+   | RZ/G3SE      | rzg3l    |
 
    3. (Optional) Uncomment the following line in `meta-rz-features/meta-rz-multi-os/meta-rzg3s/conf/layer.conf` to enable the CM33 cold boot support for the RZ/G3S device:
       ```
@@ -92,6 +96,27 @@ To apply Multi-OS feature package, follow the steps below.
       ```
       RPMSG_REMOTE_CORE ?= "0"
       ```
+   9. (Optional) Uncomment the following lines in `meta-rz-features/meta-rz-multi-os/meta-rzg3l/conf/layer.conf` for invoking the CM33 example project by Segger J-link and using uSD2 slot on the RZ/G3L, RZ/G3SE device:
+      ```
+      #MACHINE_FEATURES:append = " RZ_SD2_SUPPORT"
+      #MACHINE_FEATURES:append = " RZ_JTAG_SUPPORT"
+      ```
+   10. (Optional) Uncomment the following lines in `meta-rz-features/meta-rz-multi-os/meta-rzg3l/conf/layer.conf` for invoking the RZ/G3L AWO example project in CA55 cold boot on the RZ/G3L device:
+       ```
+       #MACHINE_FEATURES:append = " RZ_CM33_FIRMWARE_LOAD"
+       ```
+   11. (Optional) Uncomment the following lines in `meta-rz-features/meta-rz-multi-os/meta-rzg3l/conf/layer.conf` for invoking the RZ/G3L AWO example project in CM33 cold boot on the RZ/G3L device:
+
+       ```
+       #MACHINE_FEATURES:append = " RZ_CM33_COLDBOOT"
+       ```
+   12. (Optional) Modify the following line in `meta-renesas/meta-rz-bsp/recipes-bsp/trusted-firmware-a/trusted-firmware-a_2.10.bb` to enable AWO(S2R) on the RZ/G3L device:
+
+       ```
+       EXTRA_OEMAKE:append:rzg3l-family = " PLAT_SYSTEM_SUSPEND=vbat"
+       to
+       EXTRA_OEMAKE:append:rzg3l-family = " PLAT_SYSTEM_SUSPEND=awo"
+       ```
 
 ## Cortex-M33, Cortex-R52, Cortex-A55 applications
 
