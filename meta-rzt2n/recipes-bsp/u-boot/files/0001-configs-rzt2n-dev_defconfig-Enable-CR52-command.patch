@@ -1,0 +1,12 @@
+diff --git a/configs/rzt2n-dev_defconfig b/configs/rzt2n-dev_defconfig
+index fe782e90b7..c885b9b377 100644
+--- a/configs/rzt2n-dev_defconfig
++++ b/configs/rzt2n-dev_defconfig
+@@ -33,6 +33,7 @@ CONFIG_CMD_EXT4_WRITE=y
+ CONFIG_CMD_FAT=y
+ CONFIG_CMD_FS_GENERIC=y
+ CONFIG_CMD_NFS=y
++CONFIG_CMD_CR52=y
+ CONFIG_OF_CONTROL=y
+ # CONFIG_OF_UPSTREAM is not set
+ CONFIG_ENV_OVERWRITE=y

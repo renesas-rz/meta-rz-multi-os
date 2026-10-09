@@ -1,0 +1,287 @@
+diff --git a/plat/renesas/rz/common/t2n_common.mk b/plat/renesas/rz/common/t2n_common.mk
+index 2bdc77a725..3c42b706fb 100644
+--- a/plat/renesas/rz/common/t2n_common.mk
++++ b/plat/renesas/rz/common/t2n_common.mk
+@@ -94,7 +94,7 @@ BL2_SOURCES				+=	common/desc_image_load.c							\
+ 							drivers/io/io_memmap.c								\
+ 							drivers/io/io_fip.c									\
+ 							plat/renesas/rz/common/plat_image_load.c			\
+-							plat/renesas/rz/common/bl2_plat_mem_params_desc.c	\
++							plat/renesas/rz/soc/${PLAT}/bl2_plat_mem_params_desc.c	\
+ 							${RZ_TIMER_SOURCES}									\
+ 							${DDR_SOURCES}										\
+ 							${XSPI_SOURCES}										\
+diff --git a/plat/renesas/rz/soc/t2n/bl2_plat_mem_params_desc.c b/plat/renesas/rz/soc/t2n/bl2_plat_mem_params_desc.c
+new file mode 100644
+index 0000000000..a64349d048
+--- /dev/null
++++ b/plat/renesas/rz/soc/t2n/bl2_plat_mem_params_desc.c
+@@ -0,0 +1,97 @@
++/*
++ * Copyright (c) 2022, Renesas Electronics Corporation. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <common/desc_image_load.h>
++#include <plat/common/platform.h>
++#include <lib/xlat_tables/xlat_tables_defs.h>
++#include <common/tbbr/tbbr_img_def.h>
++#include <plat_tbbr_img_def.h>
++#include <rz_soc_def.h>
++
++#if (RZT2N_BL33_EXECUTION_EL == 0)
++#define BL33_MODE MODE_EL1
++#else
++#define BL33_MODE MODE_EL2
++#endif
++
++extern uint64_t fdt_blob[PAGE_SIZE_4KB / sizeof(uint64_t)];
++
++static bl_mem_params_node_t bl2_mem_params_descs[] = {
++	{
++		.image_id = BL31_IMAGE_ID,
++
++		SET_STATIC_PARAM_HEAD(ep_info, PARAM_EP, VERSION_2,
++			entry_point_info_t, SECURE | EXECUTABLE | EP_FIRST_EXE),
++		.ep_info.spsr = SPSR_64(MODE_EL3,
++			MODE_SP_ELX, DISABLE_ALL_EXCEPTIONS),
++		.ep_info.pc = BL31_BASE,
++		.ep_info.args.arg0 = (uintptr_t)PARAMS_BASE,
++
++		SET_STATIC_PARAM_HEAD(image_info, PARAM_EP, VERSION_2,
++			image_info_t, IMAGE_ATTRIB_PLAT_SETUP),
++		.image_info.image_max_size = BL31_LIMIT - BL31_BASE,
++		.image_info.image_base = BL31_BASE,
++
++# ifdef BL32_BASE
++		.next_handoff_image_id = BL32_IMAGE_ID,
++# else
++		.next_handoff_image_id = BL33_IMAGE_ID,
++# endif /* BL32_BASE */
++	},
++# ifdef BL32_BASE
++	{
++		.image_id = BL32_IMAGE_ID,
++
++		SET_STATIC_PARAM_HEAD(ep_info, PARAM_EP, VERSION_2,
++			entry_point_info_t, SECURE | EXECUTABLE),
++		.ep_info.pc = BL32_BASE,
++		.ep_info.spsr = 0,
++
++		SET_STATIC_PARAM_HEAD(image_info, PARAM_EP, VERSION_2,
++			image_info_t, 0),
++		.image_info.image_max_size = BL32_LIMIT - BL32_BASE,
++		.image_info.image_base = BL32_BASE,
++
++		.next_handoff_image_id = BL33_IMAGE_ID,
++	},
++# endif /* BL32_BASE */
++	{
++		.image_id = BL33_IMAGE_ID,
++
++		SET_STATIC_PARAM_HEAD(ep_info, PARAM_EP, VERSION_2,
++			entry_point_info_t, NON_SECURE | EXECUTABLE),
++		.ep_info.spsr = SPSR_64(BL33_MODE, MODE_SP_ELX,
++			DISABLE_ALL_EXCEPTIONS),
++		.ep_info.pc = BL33_BASE,
++
++		SET_STATIC_PARAM_HEAD(image_info, PARAM_EP, VERSION_2,
++			image_info_t, 0),
++		.image_info.image_max_size =
++				(uint32_t) (BL33_LIMIT - BL33_BASE),
++		.image_info.image_base = BL33_BASE,
++
++#if RZT2N_CA55_CR52_BL2_BOOT
++        .next_handoff_image_id = BL22_IMAGE_ID,
++#else
++        .next_handoff_image_id = INVALID_IMAGE_ID,
++#endif /* RZT2N_CA55_CR52_BL2_BOOT */
++    },
++#if RZT2N_CA55_CR52_BL2_BOOT
++    {
++        .image_id = BL22_IMAGE_ID,
++
++        SET_STATIC_PARAM_HEAD(image_info, PARAM_IMAGE_BINARY, VERSION_2,
++                              image_info_t, IMAGE_ATTRIB_PLAT_SETUP),
++        .image_info.image_max_size = BL22_LIMIT - BL22_BASE,
++
++        .image_info.image_base = BL22_BASE,
++
++        .next_handoff_image_id = INVALID_IMAGE_ID,
++    },
++#endif /* RZT2N_CA55_CR52_BL2_BOOT */
++};
++
++REGISTER_BL_IMAGE_DESCS(bl2_mem_params_descs)
+diff --git a/plat/renesas/rz/soc/t2n/bl2_plat_setup.c b/plat/renesas/rz/soc/t2n/bl2_plat_setup.c
+index 75d4e4e281..c274e6ae4b 100644
+--- a/plat/renesas/rz/soc/t2n/bl2_plat_setup.c
++++ b/plat/renesas/rz/soc/t2n/bl2_plat_setup.c
+@@ -98,7 +98,11 @@ void bl2_el3_early_platform_setup(u_register_t arg1, u_register_t arg2,
+ void bl2_el3_plat_arch_setup(void)
+ {
+ 	const mmap_region_t bl2_regions[] = {
+-		MAP_REGION_FLAT(BL2_BASE, BL2_END - BL2_BASE,
++#if (RZT2N_CA55_CR52_BL2_BOOT && !TRUSTED_BOARD_BOOT)
++		MAP_REGION_FLAT(BL2_BASE, BL22_LIMIT - BL2_BASE,
++#else
++ 		MAP_REGION_FLAT(BL2_BASE, BL2_END - BL2_BASE,
++#endif
+ 				MT_MEMORY | MT_RW | MT_SECURE),
+ 		MAP_REGION_FLAT(BL_CODE_BASE, BL_CODE_END - BL_CODE_BASE,
+ 				MT_CODE | MT_SECURE),
+@@ -130,6 +134,14 @@ void bl2_el3_plat_arch_setup(void)
+ 				MT_MEMORY | MT_RW | MT_SECURE),
+ 		MAP_REGION_FLAT(RZT2N_SYS_RAM_BASE, RZT2N_SYS_RAM_SIZE,
+ 				MT_MEMORY | MT_RW | MT_SECURE),
++		MAP_REGION_FLAT(ULL(0x81000000), ULL(0x1000000),
++				MT_MEMORY | MT_RW | MT_SECURE),
++#if (RZT2N_CA55_CR52_BL2_BOOT && !TRUSTED_BOARD_BOOT)
++		MAP_REGION_FLAT(BSP_PRV_ATCM_AXIS_CR520_ADDRESS, 0x1000000,
++		        MT_DEVICE | MT_RW | MT_SECURE),
++		MAP_REGION_FLAT(BSP_PRV_ATCM_AXIS_CR521_ADDRESS, 0x1000000,
++		        MT_DEVICE | MT_RW | MT_SECURE),
++#endif				
+ 		{0}
+ 	};
+ 
+diff --git a/plat/renesas/rz/soc/t2n/include/plat_tbbr_img_def.h b/plat/renesas/rz/soc/t2n/include/plat_tbbr_img_def.h
+new file mode 100644
+index 0000000000..75a3a1a8fe
+--- /dev/null
++++ b/plat/renesas/rz/soc/t2n/include/plat_tbbr_img_def.h
+@@ -0,0 +1,15 @@
++/*
++* Copyright (c) 2026, Renesas Electronics Corporation. All rights reserved.
++*
++* SPDX-License-Identifier: BSD-3-Clause
++*/
++
++#ifndef PLAT_TBBR_IMG_DEF_H
++#define PLAT_TBBR_IMG_DEF_H
++
++#define BL22_IMAGE_ID       (MAX_IMG_IDS_WITH_SPMDS + 0)
++
++#undef  MAX_NUMBER_IDS
++#define MAX_NUMBER_IDS		(MAX_IMG_IDS_WITH_SPMDS + 1)
++
++#endif /* PLAT_TBBR_IMG_DEF_H */
+diff --git a/plat/renesas/rz/soc/t2n/include/platform_def.h b/plat/renesas/rz/soc/t2n/include/platform_def.h
+index e3c30f03e1..1742b11d08 100644
+--- a/plat/renesas/rz/soc/t2n/include/platform_def.h
++++ b/plat/renesas/rz/soc/t2n/include/platform_def.h
+@@ -50,6 +50,14 @@
+ #define BL2_BASE				UL(0x10001000)
+ #define BL2_LIMIT				UL(0x10061000)
+ 
++/*******************************************************************************
++ * BL22 (Cortex-A55 and Cortex-R52)
++ ******************************************************************************/
++#if RZT2N_CA55_CR52_BL2_BOOT
++#define BL22_BASE				(BL2_LIMIT + PARAMS_SIZE)
++#define BL22_LIMIT				(BL22_BASE + 0x00124000)
++#endif
++
+ /*******************************************************************************
+  * BL31 specific defines.
+  ******************************************************************************/
+@@ -75,10 +83,10 @@
+  ******************************************************************************/
+ #if IMAGE_BL2
+ #define MAX_XLAT_TABLES			U(8)
+-#define MAX_MMAP_REGIONS		U(12)
++#define MAX_MMAP_REGIONS		U(16)
+ #elif IMAGE_BL31
+-#define MAX_XLAT_TABLES			U(5)
+-#define MAX_MMAP_REGIONS		U(7)
++#define MAX_XLAT_TABLES			U(20)
++#define MAX_MMAP_REGIONS		U(20)
+ #endif
+ 
+ #define PLAT_VIRT_ADDR_SPACE_SIZE	(1ULL << 36)
+diff --git a/plat/renesas/rz/soc/t2n/include/rz_soc_def.h b/plat/renesas/rz/soc/t2n/include/rz_soc_def.h
+index 35d397672d..eead1ae49b 100644
+--- a/plat/renesas/rz/soc/t2n/include/rz_soc_def.h
++++ b/plat/renesas/rz/soc/t2n/include/rz_soc_def.h
+@@ -8,7 +8,7 @@
+ #define __RZ_SOC_DEF_H__
+ 
+ #include <lib/utils_def.h>
+-
++#include <platform_def.h>
+ 
+ #define RZT2N_ATCM_BASE						UL(0x00000000)
+ #define RZT2N_BTCM_BASE						UL(0x00100000)
+@@ -103,6 +103,59 @@
+ #define RZT2N_SD_FIP_BASE					RZT2N_BL2_SIZE_MAX
+ #define RZT2N_SD_FIP_SIZE					RZT2N_FIP_SIZE_MAX
+ 
++#if RZT2N_CA55_CR52_BL2_BOOT
++#define RZT2N_A55_R52_FW_OFFSET                         UL(0x00200000)
++#define RZT2N_SPIROM_A55_R52_FW_BASE                    (RZT2N_XSPI0_MEMORY_MAP_BASE + RZT2N_A55_R52_FW_OFFSET)
++#define RZT2N_A55_R52_FW_SIZE                           (BL22_LIMIT - BL22_BASE)
++
++#define BL22_FW_SIZE                                    UL(0x00040000)
++
++#define BSP_PRV_SECTION_SECONDARY_RAM_START             UL(0x10080000)
++#define BSP_PRV_IMAGE_INFO_BRANCH_ADDRESS               ((uint32_t) ((uintptr_t) BSP_PRV_SECTION_SECONDARY_RAM_START + PARAMS_SIZE))
++
++#define BSP_PRV_ATCM_AXIS_CR520_ADDRESS                 UL(0x20000000)
++#define BSP_PRV_ATCM_AXIS_CR521_ADDRESS                 UL(0x21000000)
++#define BSP_PRV_BTCM_AXIS_CR520_ADDRESS                 UL(0x20100000)
++#define BSP_PRV_BTCM_AXIS_CR521_ADDRESS                 UL(0x21100000)
++#define BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR521     UL(0xE51FF000)
++#define BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR520     UL(0xE51FF004)
++
++#define CR52_ATCM_SIZE                                  UL(0x00080000)  /* ATCM size: 512KB */
++#define CR52_BTCM_SIZE                                  UL(0x00010000)  /* BTCM size: 64KB */
++
++#define R_SSC_SSTPCR7_AXIS0_REQ_Pos                     (0UL)        /*!< AXIS0_REQ (Bit 0)                                     */
++#define R_SSC_SSTPCR7_AXIS0_REQ_Msk                     (0x1UL)      /*!< AXIS0_REQ (Bitfield-Mask: 0x01)                       */
++#define R_SSC_SSTPCR7_AXIS0_ACK_Pos                     (1UL)        /*!< AXIS0_ACK (Bit 1)                                     */
++#define R_SSC_SSTPCR7_AXIS0_ACK_Msk                     (0x2UL)      /*!< AXIS0_ACK (Bitfield-Mask: 0x01)                       */
++#define R_SSC_SSTPCR7_AXIS1_REQ_Pos                     (4UL)        /*!< AXIS1_REQ (Bit 4)                                     */
++#define R_SSC_SSTPCR7_AXIS1_REQ_Msk                     (0x10UL)     /*!< AXIS1_REQ (Bitfield-Mask: 0x01)                       */
++#define R_SSC_SSTPCR7_AXIS1_ACK_Pos                     (5UL)        /*!< AXIS1_ACK (Bit 5)                                     */
++#define R_SSC_SSTPCR7_AXIS1_ACK_Msk                     (0x20UL)     /*!< AXIS1_ACK (Bitfield-Mask: 0x01)                       */
++
++#define FSP_HARDWARE_REGISTER_WAIT(reg, required_value) while (reg != required_value) { /* Wait. */}
++#define BSP_MSTP_REG_FSP_IP_CR52(channel)               *((volatile uint32_t *)0x81280334)
++#define BSP_MSTP_BIT_FSP_IP_CR52(channel)               (1U << (channel));
++#define BSP_MSTP_DMY_FSP_IP_CR52(channel)               (0 == channel) ? *((volatile uint32_t *)0x81295008) : \
++                                                            *((volatile uint32_t *)0x8129500C)
++
++#define FSP_CRITICAL_SECTION_DEFINE
++#define FSP_CRITICAL_SECTION_ENTER
++#define FSP_CRITICAL_SECTION_EXIT
++#define R_BSP_MODULE_START(ip, channel)                 {FSP_CRITICAL_SECTION_DEFINE;                                       \
++                                                            FSP_CRITICAL_SECTION_ENTER;                                     \
++                                                            BSP_MSTP_REG_ ## ip(channel) &= ~BSP_MSTP_BIT_ ## ip(channel);  \
++                                                            BSP_MSTP_REG_ ## ip(channel);                                   \
++                                                            BSP_MSTP_DMY_ ## ip(channel);                                   \
++                                                            BSP_MSTP_DMY_ ## ip(channel);                                   \
++                                                            BSP_MSTP_DMY_ ## ip(channel);                                   \
++                                                            BSP_MSTP_DMY_ ## ip(channel);                                   \
++                                                            BSP_MSTP_DMY_ ## ip(channel);                                   \
++                                                            FSP_CRITICAL_SECTION_EXIT;}
++
++#define SEMAR0                                          UL(0x80240180)
++#define SEMRCENAR                                       UL(0x802401A0)
++#endif
++
+ #define RZT2N_SYC_INCK_HZ					UL(25000000)
+ #define RZT2N_UART_INCK_HZ					UL(100000000)
+ 
+diff --git a/plat/renesas/rz/soc/t2n/platform.mk b/plat/renesas/rz/soc/t2n/platform.mk
+index 98f907ba96..7243d7197c 100644
+--- a/plat/renesas/rz/soc/t2n/platform.mk
++++ b/plat/renesas/rz/soc/t2n/platform.mk
+@@ -17,6 +17,7 @@ PLAT_BL_COMMON_SOURCES	+=	plat/renesas/rz/soc/${PLAT}/plat_security.c			\
+ 							plat/renesas/rz/soc/${PLAT}/drivers/otp.c
+ 
+ BL2_SOURCES				+=	plat/renesas/rz/soc/${PLAT}/bl2_plat_setup.c		\
++							plat/renesas/rz/soc/${PLAT}/bl2_plat_mem_params_desc.c	\
+ 							plat/renesas/rz/soc/${PLAT}/drivers/cpg.c			\
+ 							plat/renesas/rz/soc/${PLAT}/drivers/pfc.c
+ 

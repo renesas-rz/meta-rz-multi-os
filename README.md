@@ -10,6 +10,7 @@ The meta-rz-multi-os repository provides the Multi-OS feature layer for Linux BS
 - Board: RZ/N2H Evaluation Board Kit / MPU: R9A09G087M44 (RZ/N2H)
 - Board: RZ/G3L SMARC Evaluation Board Kit / MPU: R9A08G046L46 (RZ/G3L)
 - Board: RZ/G3SE SMARC Evaluation Board Kit / MPU: R9A08G045SE6 (RZ/G3SE)
+- Board: RZ/T2N Evaluation Board Kit / MPU: R9A07G076 (RZ/T2N)
 
 More details about Linux BSP Plus at: [Renesas RZ Linux BSP Plus](https://renesas-rz.github.io/rz_linux_bsp_plus/)
 
@@ -18,14 +19,7 @@ More details about Linux BSP Plus at: [Renesas RZ Linux BSP Plus](https://renesa
 Assume that `$WORK` is the current working directory.
 
 Please refer to [How To Build Linux BSP Plus](https://renesas-rz.github.io/rz_linux_bsp_plus/) for the details of building Linux BSP Plus source code.
-To support RZ Linux BSP Plus for Kernel 6.12 v4.0, please check out BSP-PLUS-K6.12-V4.0 as following:
-```bash
-    $ cd $WORK # Ensure you are in your working directory
-    $ git clone https://github.com/renesas-rz/meta-renesas
-    $ cd meta-renesas
-    $ git checkout -b tmp BSP-PLUS-K6.12-V4.0
-    $ cd ../
-```
+
 (Optional) Regarding Graphics and Video Codecs packages, please download from [Renesas.com](https://www.renesas.com/) website.
 
 To apply Multi-OS feature package, follow the steps below.
@@ -47,6 +41,7 @@ To apply Multi-OS feature package, follow the steps below.
    | RZ/N2H       | rzn2h    |
    | RZ/G3L       | rzg3l    |
    | RZ/G3SE      | rzg3l    |
+   | RZ/T2N       | rzt2n    |
 
    3. (Optional) Uncomment the following line in `meta-rz-features/meta-rz-multi-os/meta-rzg3s/conf/layer.conf` to enable the CM33 cold boot support for the RZ/G3S device:
       ```
