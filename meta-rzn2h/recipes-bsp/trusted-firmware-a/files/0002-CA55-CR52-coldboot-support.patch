@@ -124,7 +124,7 @@ index 000000000..918dc307e
 +
 +REGISTER_BL_IMAGE_DESCS(bl2_mem_params_descs)
 diff --git a/plat/renesas/rz/soc/t2h/bl2_plat_setup.c b/plat/renesas/rz/soc/t2h/bl2_plat_setup.c
-index 852cb3027..fb9b0643a 100644
+index 852cb3027..358783080 100644
 --- a/plat/renesas/rz/soc/t2h/bl2_plat_setup.c
 +++ b/plat/renesas/rz/soc/t2h/bl2_plat_setup.c
 @@ -103,7 +103,11 @@ void bl2_el3_early_platform_setup(u_register_t arg1, u_register_t arg2,
@@ -149,9 +149,9 @@ index 852cb3027..fb9b0643a 100644
 +		MAP_REGION_FLAT(RZT2H_SYS_RAM_BASE, UL(0x200000),
 +		 		MT_MEMORY | MT_RW | MT_SECURE),
 +		MAP_REGION_FLAT(BSP_PRV_ATCM_AXIS_CR520_ADDRESS, 0x1000000,
-+		        MT_MEMORY | MT_RW | MT_SECURE),
++		        MT_DEVICE | MT_RW | MT_SECURE),
 +		MAP_REGION_FLAT(BSP_PRV_ATCM_AXIS_CR521_ADDRESS, 0x1000000,
-+		        MT_MEMORY | MT_RW | MT_SECURE),
++		        MT_DEVICE | MT_RW | MT_SECURE),
 +#endif
  		{0}
  	};
@@ -211,7 +211,7 @@ index 2a70747f4..2b004ee4d 100644
  
  #define PLAT_VIRT_ADDR_SPACE_SIZE	(1ULL << 36)
 diff --git a/plat/renesas/rz/soc/t2h/include/rz_soc_def.h b/plat/renesas/rz/soc/t2h/include/rz_soc_def.h
-index 3b11f51a8..3cbae44ce 100644
+index 3b11f51a8..3a86e7a63 100644
 --- a/plat/renesas/rz/soc/t2h/include/rz_soc_def.h
 +++ b/plat/renesas/rz/soc/t2h/include/rz_soc_def.h
 @@ -9,6 +9,7 @@
@@ -222,7 +222,7 @@ index 3b11f51a8..3cbae44ce 100644
  
  #define RZT2H_ATCM_BASE						UL(0x00000000)
  #define RZT2H_BTCM_BASE						UL(0x00100000)
-@@ -104,6 +105,53 @@
+@@ -104,6 +105,59 @@
  #define RZT2H_SD_FIP_BASE					RZT2H_BL2_SIZE_MAX
  #define RZT2H_SD_FIP_SIZE					RZT2H_FIP_SIZE_MAX
  
@@ -236,10 +236,15 @@ index 3b11f51a8..3cbae44ce 100644
 +#define BSP_PRV_SECTION_SECONDARY_RAM_START             UL(0x10080000)
 +#define BSP_PRV_IMAGE_INFO_BRANCH_ADDRESS               ((uint32_t) ((uintptr_t) BSP_PRV_SECTION_SECONDARY_RAM_START + PARAMS_SIZE))
 +
-+#define BSP_PRV_ATCM_AXIS_CR521_ADDRESS                 UL(0x21000000)
 +#define BSP_PRV_ATCM_AXIS_CR520_ADDRESS                 UL(0x20000000)
++#define BSP_PRV_ATCM_AXIS_CR521_ADDRESS                 UL(0x21000000)
++#define BSP_PRV_BTCM_AXIS_CR520_ADDRESS                 UL(0x20100000)
++#define BSP_PRV_BTCM_AXIS_CR521_ADDRESS                 UL(0x21100000)
 +#define BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR521     UL(0xE51FF000)
 +#define BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR520     UL(0xE51FF004)
++
++#define CR52_ATCM_SIZE                                  UL(0x00080000)  /* ATCM size: 512KB */
++#define CR52_BTCM_SIZE                                  UL(0x00010000)  /* BTCM size: 64KB */
 +
 +#define R_SSC_SSTPCR7_AXIS0_REQ_Pos                     (0UL)        /*!< AXIS0_REQ (Bit 0)                                     */
 +#define R_SSC_SSTPCR7_AXIS0_REQ_Msk                     (0x1UL)      /*!< AXIS0_REQ (Bitfield-Mask: 0x01)                       */
@@ -271,6 +276,7 @@ index 3b11f51a8..3cbae44ce 100644
 +                                                            FSP_CRITICAL_SECTION_EXIT;}
 +
 +#define SEMAR0                                          UL(0x80240180)
++#define SEMRCENAR                                       UL(0x802401A0)
 +#endif
 +
  #define RZT2H_SYC_INCK_HZ					UL(25000000)

@@ -6,8 +6,8 @@ The meta-rz-multi-os repository provides the Multi-OS feature layer for Linux BS
 - Board: RZ/G2LC SMARC Evaluation Board Kit / MPU: R9A07G044C (RZ/G2LC)
 - Board: RZ/G2UL SMARC Evaluation Board Kit / MPU: R9A07G043U (RZ/G2UL)
 - Board: RZ/G3S SMARC Evaluation Board Kit / MPU: R9A08G045 (RZ/G3S)
-- Board: RZ/T2H Evaluation Board Kit / MPU: R9A09G077M44 (RZ/T2H)
-- Board: RZ/N2H Evaluation Board Kit / MPU: R9A09G087M44 (RZ/N2H)
+- Board: RZ/T2H Evaluation Board Kit / MPU: R9A09G077 (RZ/T2H)
+- Board: RZ/N2H Evaluation Board Kit / MPU: R9A09G087 (RZ/N2H)
 - Board: RZ/G3L SMARC Evaluation Board Kit / MPU: R9A08G046L46 (RZ/G3L)
 - Board: RZ/G3SE SMARC Evaluation Board Kit / MPU: R9A08G045SE6 (RZ/G3SE)
 - Board: RZ/T2N Evaluation Board Kit / MPU: R9A07G076 (RZ/T2N)
@@ -20,6 +20,14 @@ Assume that `$WORK` is the current working directory.
 
 Please refer to [How To Build Linux BSP Plus](https://renesas-rz.github.io/rz_linux_bsp_plus/) for the details of building Linux BSP Plus source code.
 
+For RZ/G2L, RZ/G2LC, RZ/G2UL, and RZ/G3S support, please check out BSP-PLUS-K6.12-V3.0 as follows:
+   ```
+   $ cd $WORK # Ensure you are in your working directory
+   $ git clone https://github.com/renesas-rz/meta-renesas
+   $ cd meta-renesas
+   $ git checkout -b tmp BSP-PLUS-K6.12-V3.0
+   $ cd ${WORK}
+   ```
 (Optional) Regarding Graphics and Video Codecs packages, please download from [Renesas.com](https://www.renesas.com/) website.
 
 To apply Multi-OS feature package, follow the steps below.
@@ -45,21 +53,17 @@ To apply Multi-OS feature package, follow the steps below.
 
    3. (Optional) Uncomment the following line in `meta-rz-features/meta-rz-multi-os/meta-rzg3s/conf/layer.conf` to enable the CM33 cold boot support for the RZ/G3S device:
       ```
-      #MACHINE_FEATURES:append = " RZG3S_CM33_BOOT"
+      #MACHINE_FEATURES:append = " RZ_CM33_COLDBOOT"
       ```
    4. (Optional) Uncomment the following line in `meta-rz-features/meta-rz-multi-os/meta-rzg3s/conf/layer.conf` to enable the AWO example support for the RZ/G3S device:
       ```
-      #MACHINE_FEATURES:append = " RZG3S_AWO_SUPPORT"
+      #MACHINE_FEATURES:append = " RZ_AWO_SUPPORT"
       ```
    5. (Optional) RemoteProc support can be enabled by modifying the following lines in `meta-rz-features/meta-rz-multi-os/meta-<platform>/conf/layer.conf`:
    
-      For the CM33 core on the RZ/G2x series, uncomment the following line:
+      For the CM33 core on the RZ/G series, uncomment the following line:
       ```
-      #MACHINE_FEATURES:append = " CM33_REMOTEPROC"
-      ```
-      For the CM33 core on the RZ/G3S, uncomment the following line:
-      ```
-      #MACHINE_FEATURES:append = " RZG3S_CM33_REMOTEPROC"
+      #MACHINE_FEATURES:append = " RZ_REMOTEPROC"
       ```
       For the CR52 core on the RZ/T-N series, set the value to "1":
       ```
@@ -69,7 +73,7 @@ To apply Multi-OS feature package, follow the steps below.
 
       For CM33 firmware on the RZ/G3S, uncomment the following line:
       ```
-      #MACHINE_FEATURES:append = " RZG3S_CM33_FIRMWARE_LOAD"
+      #MACHINE_FEATURES:append = " RZ_CM33_FIRMWARE_LOAD"
       ```
       For CR52/CA55 firmware on the RZ/T-N series, uncomment the following line:
       ```

@@ -1,0 +1,26 @@
+diff --git a/configs/rzt2h-dev_defconfig b/configs/rzt2h-dev_defconfig
+index e5a17f2c56..ec6633d5ec 100755
+--- a/configs/rzt2h-dev_defconfig
++++ b/configs/rzt2h-dev_defconfig
+@@ -124,7 +124,7 @@ CONFIG_CMD_BOOTEFI_HELLO_COMPILE=y
+ CONFIG_CMD_BOOTEFI_SELFTEST=y
+ CONFIG_CMD_GPT=y
+ CONFIG_EFI_PARTITION=y
+-CONFIG_EFI_LOADER=y
++# CONFIG_EFI_LOADER is not set
+ CONFIG_EFI_DEVICE_PATH_TO_TEXT=y
+ CONFIG_EFI_UNICODE_COLLATION_PROTOCOL2=y
+ CONFIG_EFI_UNICODE_CAPITALIZATION=y
+diff --git a/configs/rzt2h-distros_defconfig b/configs/rzt2h-distros_defconfig
+index da5b68bbd2..777c1533aa 100644
+--- a/configs/rzt2h-distros_defconfig
++++ b/configs/rzt2h-distros_defconfig
+@@ -124,7 +124,7 @@ CONFIG_CMD_BOOTEFI_HELLO_COMPILE=y
+ CONFIG_CMD_BOOTEFI_SELFTEST=y
+ CONFIG_CMD_GPT=y
+ CONFIG_EFI_PARTITION=y
+-CONFIG_EFI_LOADER=y
++# CONFIG_EFI_LOADER is not set
+ CONFIG_EFI_DEVICE_PATH_TO_TEXT=y
+ CONFIG_EFI_UNICODE_COLLATION_PROTOCOL2=y
+ CONFIG_EFI_UNICODE_CAPITALIZATION=y

@@ -2,6 +2,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI:append = " \
 	file://0001-Change-sys-ram-to-ns.patch \
+	file://0004-Overwrite-cr520-security-attribute-to-secure.patch \
 "
 # List of TF-A patches
 SRC_URI:append = " \

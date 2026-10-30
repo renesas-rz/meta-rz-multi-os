@@ -1,0 +1,26 @@
+diff --git a/configs/rzn2h-dev_defconfig b/configs/rzn2h-dev_defconfig
+index a9d3ff6ae0..affafdcc93 100755
+--- a/configs/rzn2h-dev_defconfig
++++ b/configs/rzn2h-dev_defconfig
+@@ -125,7 +125,7 @@ CONFIG_CMD_BOOTEFI_HELLO_COMPILE=y
+ CONFIG_CMD_BOOTEFI_SELFTEST=y
+ CONFIG_CMD_GPT=y
+ CONFIG_EFI_PARTITION=y
+-CONFIG_EFI_LOADER=y
++# CONFIG_EFI_LOADER is not set
+ CONFIG_EFI_DEVICE_PATH_TO_TEXT=y
+ CONFIG_EFI_UNICODE_COLLATION_PROTOCOL2=y
+ CONFIG_EFI_UNICODE_CAPITALIZATION=y
+diff --git a/configs/rzn2h-distros_defconfig b/configs/rzn2h-distros_defconfig
+index 78f67f0310..f47b3eb280 100644
+--- a/configs/rzn2h-distros_defconfig
++++ b/configs/rzn2h-distros_defconfig
+@@ -125,7 +125,7 @@ CONFIG_CMD_BOOTEFI_HELLO_COMPILE=y
+ CONFIG_CMD_BOOTEFI_SELFTEST=y
+ CONFIG_CMD_GPT=y
+ CONFIG_EFI_PARTITION=y
+-CONFIG_EFI_LOADER=y
++# CONFIG_EFI_LOADER is not set
+ CONFIG_EFI_DEVICE_PATH_TO_TEXT=y
+ CONFIG_EFI_UNICODE_COLLATION_PROTOCOL2=y
+ CONFIG_EFI_UNICODE_CAPITALIZATION=y

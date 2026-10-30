@@ -1,6 +1,6 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
 
-ENABLE_REMOTEPROC = "${@'1' if 'CM33_REMOTEPROC' in d.getVar('MACHINE_FEATURES').split() else '0'}"
+ENABLE_REMOTEPROC = "${@'1' if 'RZ_REMOTEPROC' in d.getVar('MACHINE_FEATURES').split() else '0'}"
 
 # List of kernel patches
 SRC_URI += " \

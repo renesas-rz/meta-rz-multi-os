@@ -328,7 +328,7 @@ static void *communicate(void* arg) {
 
     pthread_mutex_lock(&rsc_mutex);
     rpdev = platform_create_rpmsg_vdev(p->platform, 0,
-                      VIRTIO_DEV_MASTER,
+                      VIRTIO_DEV_DRIVER,
                       NULL,
                       rpmsg_service_bind);
     pthread_mutex_unlock(&rsc_mutex);

@@ -6,9 +6,7 @@ FIRMWARE_NAME = "*.elf"
 EXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = " \
-    file://rzg2l_cm33_rpmsg_linux-rtos_demo.elf \
-    file://rzg2lc_cm33_rpmsg_linux-rtos_demo.elf \
-    file://rzg2ul_cm33_rpmsg_linux-rtos_demo.elf \
+    file://. \
 " 
 
 INSANE_SKIP:${PN} = "arch" 

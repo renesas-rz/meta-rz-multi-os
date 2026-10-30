@@ -31,10 +31,10 @@ index 87133cc27a..138b00d751 100644
  obj-$(CONFIG_CMD_DM) += dm.o
 diff --git a/cmd/cr52.c b/cmd/cr52.c
 new file mode 100644
-index 0000000000..41724f8467
+index 0000000000..c1459dbcdf
 --- /dev/null
 +++ b/cmd/cr52.c
-@@ -0,0 +1,164 @@
+@@ -0,0 +1,190 @@
 +#include <common.h>
 +#include <command.h>
 +
@@ -55,8 +55,15 @@ index 0000000000..41724f8467
 +#define CR521_MODULE_STOP_MASK                          (0x00000002)    // Bit mask for CR52_1 stop control in MSTPCRN register
 +#define SSTPCR7_AXIS1_ACK_MASK                          (0x00000020)    // Bit mask for AXIS1_ACK in SSTPCR7 register
 +
-+#define BSP_PRV_ATCM_AXIS_CR520_ADDRESS                 (0x20000000)    // Base address of the AXIS interface CPU0
-+#define BSP_PRV_ATCM_AXIS_CR521_ADDRESS                 (0x21000000)    // Base address of the AXIS interface CPU1
++#define BSP_PRV_ATCM_AXIS_CR520_ADDRESS                 (0x20000000)    // Base address of the ATCM AXIS interface CPU0
++#define BSP_PRV_ATCM_AXIS_CR521_ADDRESS                 (0x21000000)    // Base address of the ATCM AXIS interface CPU1
++#define BSP_PRV_BTCM_AXIS_CR520_ADDRESS                 (0x20100000)    // Base address of the BTCM AXIS interface CPU0
++#define BSP_PRV_BTCM_AXIS_CR521_ADDRESS                 (0x21100000)    // Base address of the BTCM AXIS interface CPU1
++
++#define CR52_ATCM_START                                 (0x00000000)    // ATCM start address
++#define CR52_ATCM_END                                   (0x00080000)    // ATCM end address
++#define CR52_BTCM_START                                 (0x00100000)    // BTCM start address
++#define CR52_BTCM_END                                   (0x00110000)    // BTCM end address
 +
 +#define BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR520     (0xE51FF004)    // Branch instruction for CPU0  
 +#define BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR521     (0xE51FF000)    // Branch instruction for CPU1
@@ -68,6 +75,21 @@ index 0000000000..41724f8467
 +/* Key code for writing reset register */
 +#define BSP_PRV_RESET_RELEASE_KEY                       (0x00000000)
 +#define BSP_PRV_RESET_KEY_AUTO_RELEASE                  (0x4321A502)
++
++static void cr52_tcm_ecc_init(void *atcm_base, void *btcm_base)
++{
++    u32 i;
++
++    /* Clear ATCM with 64-bit aligned writes */
++    for (i = 0; i < (CR52_ATCM_END - CR52_ATCM_START); i += 8) {
++        *(volatile u64 *)((uintptr_t)atcm_base + i) = 0ULL;
++    }
++
++    /* Clear BTCM with 32-bit aligned writes */
++    for (i = 0; i < (CR52_BTCM_END - CR52_BTCM_START); i += 4) {
++        *(volatile u32 *)((uintptr_t)btcm_base + i) = 0U;
++    }
++}
 +
 +void cr520_boot(u32 sysram_addr)
 +{
@@ -100,10 +122,14 @@ index 0000000000..41724f8467
 +        reg_val = *(volatile u32 *) SSTPCR7;
 +    } while ((reg_val & SSTPCR7_AXIS1_ACK_MASK) != 0);
 +
++    /* Initialize TCM via AXIS interface before loading firmware */
++    cr52_tcm_ecc_init((void *)(uintptr_t)BSP_PRV_ATCM_AXIS_CR521_ADDRESS,
++                      (void *)(uintptr_t)BSP_PRV_BTCM_AXIS_CR521_ADDRESS);
++
 +    /* Store the instruction code to start address of the ATCM of CPU1 via AXIS interface */
 +    start_addr = sysram_addr + 0x1000;
-+    *(volatile u32 *) BSP_PRV_ATCM_AXIS_CR521_ADDRESS         = BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR521;
-+    *(volatile u32 *) (BSP_PRV_ATCM_AXIS_CR521_ADDRESS + 0x8) = start_addr;
++    *(volatile u64 *) BSP_PRV_ATCM_AXIS_CR521_ADDRESS         = BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR521;
++    *(volatile u64 *) (BSP_PRV_ATCM_AXIS_CR521_ADDRESS + 0x8) = start_addr;
 +
 +    /* Start instruction fetch by writing 0 to CPU1HALT bit in CPU1HALT register */
 +    *(volatile u32 *) CPU1HALT = 0x00000000;

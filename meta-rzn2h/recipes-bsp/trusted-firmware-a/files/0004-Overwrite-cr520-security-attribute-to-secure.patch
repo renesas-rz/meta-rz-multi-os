@@ -1,0 +1,13 @@
+diff --git a/plat/renesas/rz/soc/t2h/plat_security.c b/plat/renesas/rz/soc/t2h/plat_security.c
+index c5e7a0a66..cf240414e 100644
+--- a/plat/renesas/rz/soc/t2h/plat_security.c
++++ b/plat/renesas/rz/soc/t2h/plat_security.c
+@@ -30,7 +30,7 @@ static const struct {
+ 	/* Master Access Control Register */
+ 	{MSTACCCTL0,  0xFFFFFFFFU, 0xEEEEEEEEU},
+ 	{MSTACCCTL1,  0x0000000FU, 0x0000000EU},
+-	{MSTACCCTL2,  0xFFFFF0FFU, 0xEEEEE0EEU},
++	{MSTACCCTL2,  0xFFFFF0FFU, 0xEDEEE0EEU},
+ 	{MSTACCCTL3,  0x0000000FU, 0x0000000EU},
+ 	/* Slave Access Control Register */
+ 	{SLVACCCTL0,  0xCFFFF3FFU, 0x00000000U},

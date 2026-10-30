@@ -5,7 +5,7 @@ HOMEPAGE = "https://github.com/OpenAMP/libmetal/"
 SECTION = "libs"
 
 LICENSE = "BSD-3-Clause"
-LIC_FILES_CHKSUM ?= "file://LICENSE.md;md5=fe0b8a4beea8f0813b606d15a3df3d3c"
+LIC_FILES_CHKSUM ?= "file://LICENSE.md;md5=f4d5df0f12dcea1b1a0124219c0dbab4"
 
 REPO ?= "git://github.com/OpenAMP/libmetal.git;protocol=https"
 BRANCH ?= "main"
@@ -17,7 +17,7 @@ SRC_URI = "${REPO};${BRANCHARG}"
 S = "${WORKDIR}/git"
 
 # if user want to enable hugetlbfs support, please
-# add "DEPENDS:append_pn-libmetal = " libhugetlbfs "" to your local.conf
+# add "DEPENDS_append_pn-libmetal = " libhugetlbfs "" to your local.conf
 DEPENDS = "sysfsutils"
 
 PROVIDES = "libmetal"
@@ -35,7 +35,7 @@ EXTRA_OECMAKE = " \
 	"
 ALLOW_EMPTY_${PN}-demos = "1"
 
-PACKAGES:append += "${PN}-demos"
+PACKAGES:append = " ${PN}-demos"
 
 FILES_${PN} = " \
     ${libdir}/*.so* \

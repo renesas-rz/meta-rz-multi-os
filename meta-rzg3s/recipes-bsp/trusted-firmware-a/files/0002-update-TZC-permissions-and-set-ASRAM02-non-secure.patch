@@ -1,0 +1,51 @@
+From fdb0f9b49ad9586ebd95a4f6ffc28872907de645 Mon Sep 17 00:00:00 2001
+From: Nguyen Thanh Tam <tam.nguyen.wr@renesas.com>
+Date: Fri, 5 Jun 2026 09:07:52 +0700
+Subject: [PATCH] update TZC permissions and set ASRAM02 non-secure
+
+---
+ plat/renesas/rz/soc/g3s/plat_security.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/plat/renesas/rz/soc/g3s/plat_security.c b/plat/renesas/rz/soc/g3s/plat_security.c
+index abe2de8d1..3e5c902f1 100644
+--- a/plat/renesas/rz/soc/g3s/plat_security.c
++++ b/plat/renesas/rz/soc/g3s/plat_security.c
+@@ -234,7 +234,7 @@ static void plat_tzc_asram_setup(void)
+ 			.base = 0,	/* Not Used by Region 0 */
+ 			.end  = 0,	/* Not Used by Region 0 */
+ 			.sec_attr = TZC_REGION_S_RDWR,
+-			.nsaid_permissions = PLAT_TZC_REGION_ACCESS_S_UNPRIV
++			.nsaid_permissions = PLAT_TZC_REGION_ACCESS_S_PRIV
+ 		},
+ 		{}
+ 	};
+@@ -245,7 +245,7 @@ static void plat_tzc_asram_setup(void)
+ 			.base = 0,	/* Not Used by Region 0 */
+ 			.end  = 0,	/* Not Used by Region 0 */
+ 			.sec_attr = TZC_REGION_S_RDWR,
+-			.nsaid_permissions = PLAT_TZC_REGION_ACCESS_S_UNPRIV
++			.nsaid_permissions = PLAT_TZC_REGION_ACCESS_S_PRIV
+ 		},
+ 		{}
+ 	};
+@@ -256,13 +256,13 @@ static void plat_tzc_asram_setup(void)
+ 			.base = 0,	/* Not Used by Region 0 */
+ 			.end  = 0,	/* Not Used by Region 0 */
+ 			.sec_attr = TZC_REGION_S_RDWR,
+-			.nsaid_permissions = PLAT_TZC_REGION_ACCESS_S_UNPRIV
++			.nsaid_permissions = PLAT_TZC_REGION_ACCESS_S_PRIV
+ 		},
+ 		{
+ 			.base = PLAT_DATA_S_ASRAM02_BASE,
+ 			.end  = PLAT_DATA_S_ASRAM02_END,
+-			.sec_attr = TZC_REGION_S_RDWR,
+-			.nsaid_permissions = PLAT_TZC_REGION_ACCESS_S_UNPRIV
++			.sec_attr = TZC_REGION_S_NONE,
++			.nsaid_permissions = PLAT_TZC_REGION_ACCESS_NS_UNPRIV
+ 		},
+ 		{}
+ 	};
+-- 
+2.34.1
+

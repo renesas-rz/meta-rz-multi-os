@@ -131,7 +131,7 @@ static int rzt2_enable_interrupt(struct remoteproc *rproc, struct metal_device *
     if (!ipi.registered) {
         /* Register interrupt handler and enable interrupt for RZ/G2 CA5X or CR7 */
         irq_vect = (uintptr_t)ipi_dev->irq_info;
-        ret = metal_irq_register((int)irq_vect, rzt2_proc_irq_handler, ipi_dev, rproc);
+        ret = metal_irq_register((int)irq_vect, rzt2_proc_irq_handler, rproc);
         if (ret) {
             LPRINTF("metal_irq_register() failed with %d", ret);
             return ret;
@@ -146,16 +146,12 @@ static void rzt2_disable_interrupt(struct remoteproc *rproc)
 {
     (void)rproc;
     struct metal_device *dev;
-    int ret;
 
     dev = ipi.dev;
     if (dev) {
         metal_irq_disable((uintptr_t)dev->irq_info);
-        ret = metal_irq_unregister((int)dev->irq_info, NULL, NULL, NULL);
-        if (ret) {
-            LPRINTF("metal_irq_unregister() failed with %d", ret);
-            return ;
-        }
+        metal_irq_unregister((uintptr_t)dev->irq_info);
+
         metal_device_close(dev);
         ipi.registered = 0;
     }

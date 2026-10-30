@@ -10,3 +10,7 @@ SRC_URI:append = " \
 	file://0003-Fix-issue-with-SEI-port-setting.patch \
 	file://0004-Change-port-setting-to-SCI1.patch \
 "
+
+SRC_URI:append = " \
+    ${@'file://0005-configs-rzn2h-dev_defconfig-Disable-EFI-Loader.patch' if d.getVar('ENABLE_REMOTEPROC') == '1' else ''} \
+"

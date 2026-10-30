@@ -34,10 +34,10 @@ index 4d55a6262..2ffc58e92 100644
  # This option gets enabled automatically if the TRUSTED_BOARD_BOOT
  # is set via root Makefile, but Renesas support Trusted-Boot without
 diff --git a/plat/renesas/rz/soc/t2h/bl2_plat_setup.c b/plat/renesas/rz/soc/t2h/bl2_plat_setup.c
-index 852cb3027..9b80053a3 100644
+index 852cb3027..79b5e4d7a 100644
 --- a/plat/renesas/rz/soc/t2h/bl2_plat_setup.c
 +++ b/plat/renesas/rz/soc/t2h/bl2_plat_setup.c
-@@ -25,6 +25,20 @@
+@@ -25,6 +25,21 @@
  #include <rz_soc_def.h>
  #include <rz_private.h>
  
@@ -53,12 +53,13 @@ index 852cb3027..9b80053a3 100644
 +#define SSTPCR71				*((volatile uint32_t *)0x8129020C)
 +#define CPU1HALT				*((volatile uint32_t *)0x81295010)
 +
++static void rz_tcm_ecc_init(uintptr_t atcm_base, uintptr_t btcm_base);
 +static void bsp_copy_8byte (uintptr_t * src, uintptr_t * dst, uintptr_t bytesize);
 +#endif
  
  static console_t rzt2h_bl2_console;
  
-@@ -59,6 +73,95 @@ int bl2_plat_handle_post_image_load(unsigned int image_id)
+@@ -59,6 +74,106 @@ int bl2_plat_handle_post_image_load(unsigned int image_id)
  		memcpy(&params->bl33_ep_info, &bl_mem_params->ep_info,
  			sizeof(entry_point_info_t));
  		break;
@@ -74,7 +75,9 @@ index 852cb3027..9b80053a3 100644
 +		sys_safetybase_unlock(PRCRx_SYS_CTRL);
 +
 +		/* Reset flag for secondary core to stop  booting */
-+		mmio_write_32(SEMAR0, 0);
++		mmio_write_32(SEMRCENAR, 0x1);
++		dmbsy();
++		mmio_read_32(SEMAR0);
 +#elif (PLAT_R520_BL2_BOOT || PLAT_R521_BL2_BOOT)
 +		/* 
 +		 * Setting Area protect register (Non-Safety and Safety)
@@ -89,6 +92,10 @@ index 852cb3027..9b80053a3 100644
 +		NOTICE("Second boot core is not selected (A55/R52)\n");
 +#endif
 +		bsp_copy_8byte((uintptr_t*)src, (uintptr_t*)dst, size);
++		flush_dcache_range(dst, size);
++
++		dsb();
++		isb();
 +
 +#if PLAT_A551_BL2_BOOT
 +		/* Write rebase address */
@@ -123,6 +130,7 @@ index 852cb3027..9b80053a3 100644
 +		/* Store the instruction code to start address of the ATCM of CPU0 via AXIS interface*/
 +		*dst_cpu0++ = BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR520;
 +		*dst_cpu0++ = BSP_PRV_IMAGE_INFO_BRANCH_ADDRESS;
++		dsb();
 +
 +		/* Reset CR52_0 and release the reset state */
 +		mmio_write_32(SWRCPU0, 0x4321A502);
@@ -138,12 +146,16 @@ index 852cb3027..9b80053a3 100644
 +		/* Polling ACK bit in SSTPCR */
 +		FSP_HARDWARE_REGISTER_WAIT((SSTPCR7 & (1 << R_SSC_SSTPCR7_AXIS1_ACK_Pos)), 0);
 +
++		/* Initialize TCM via AXIS interface before loading firmware */
++		rz_tcm_ecc_init(BSP_PRV_ATCM_AXIS_CR521_ADDRESS,
++		                BSP_PRV_BTCM_AXIS_CR521_ADDRESS);
++
 +		uint64_t * dst_cpu1 = (uint64_t *) BSP_PRV_ATCM_AXIS_CR521_ADDRESS;
 +
 +		/* Store the instruction code to start address of the ATCM of CPU1 via AXIS interface */
 +		*dst_cpu1++ = BSP_PRV_IMAGE_INFO_BRANCH_INSTRUCTION_CR521;
 +		*dst_cpu1++ = BSP_PRV_IMAGE_INFO_BRANCH_ADDRESS;
-+		__asm volatile ("DSB SY");
++		dsb();
 +
 +		/* Start instruction fetch by writing 0 to CPU1HALT bit in CPU1HALT register */
 +		CPU1HALT = 0x00000000;
@@ -154,25 +166,28 @@ index 852cb3027..9b80053a3 100644
  	default:
  		/* Do nothing in default case */
  		break;
-@@ -137,7 +240,11 @@ void bl2_el3_plat_arch_setup(void)
- 	};
- 
- 	setup_page_tables(bl2_regions, rzt2h_mmap);
--	enable_mmu_el3(0);
-+#if RZN2H_CA55_CR52_BL2_BOOT
-+	enable_mmu_el3(1);
-+#else
-+ 	enable_mmu_el3(0);
-+#endif
- }
- 
- void bl2_platform_setup(void)
-@@ -179,3 +286,29 @@ void bl2_platform_setup(void)
+@@ -179,3 +298,44 @@ void bl2_platform_setup(void)
  	NOTICE("BL2: PART NUMBER: 0X%x\n", sys_get_platform_part_number());
  	NOTICE("BL2: PRODUCT VERSION: 0X%x\n", sys_get_platform_product_version());
  }
 +
 +#if RZN2H_CA55_CR52_BL2_BOOT
++
++static void rz_tcm_ecc_init(uintptr_t atcm_base, uintptr_t btcm_base)
++{
++	uint32_t i;
++
++	/* Clear ATCM with 64-bit aligned writes */
++	for (i = 0; i < CR52_ATCM_SIZE; i += 8) {
++		*(volatile uint64_t *)(atcm_base + i) = 0ULL;
++	}
++
++	/* Clear BTCM with 32-bit aligned writes */
++	for (i = 0; i < CR52_BTCM_SIZE; i += 4) {
++		*(volatile uint32_t *)(btcm_base + i) = 0U;
++	}
++}
++
 +static void bsp_copy_8byte (uintptr_t * src, uintptr_t * dst, uintptr_t bytesize)
 +{
 +	bytesize = ((bytesize + (sizeof(uint64_t) - 1)) / sizeof(uint64_t));
@@ -187,7 +202,6 @@ index 852cb3027..9b80053a3 100644
 +	"    B.EQ   copy_to_dst_end           \n"
 +	"    LDR    x0, [x1], #8              \n"
 +	"    STR    x0, [x2], #8              \n"
-+	"    DSB SY                           \n"
 +	"    ADD    x4, x4, #1                \n"
 +	"    B.NE   copy_to_dst               \n"
 +	"copy_to_dst_end:                     \n"
